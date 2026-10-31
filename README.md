@@ -1,83 +1,115 @@
-____________________________________________________________________________________
+# Clasificador de calidad y tamaño de frutas y verduras
 
+Proyecto final del curso **Algoritmos y Programación III**, Universidad Icesi, Cali, Colombia (2026-2).
 
-# Project Template
-This is the template for the Project I course at the IA Master, Universidad Icesi, Cali Colombia
+**Estado del proyecto:** en desarrollo.
 
-This template is based on the template proposed by the [Data Science Working Group] (https://github.com/sfbrigade/data-science-wg) Code for the [San Francisco’s Code initiative](https://github.com/sfbrigade/data-science-wg) 
+## Objetivo
+A partir de una foto de **una** fruta o verdura sobre fondo uniforme, el sistema predice:
 
-*Instructions: Edit this template filling in the titles, information, and links! Feel free to stray a bit to suit your project but try to provide the main information for reviews and feedback purposes.*
-## Remove this table after updating your project's information
-____________________________________________________________________________________
+- **Calidad:** al menos tres categorías (por ejemplo, buena, mala y mixta).
+- **Tamaño:** pequeño, mediano o grande, además de un diámetro normalizado.
 
-# Project Name
-This project is a part of the  **Proyecto 1 de Innovación Tecnológica** course in the Applied Artificial Intelligence Master, Universidad Icesi, Cali Colombia. 
+Seguimos la metodología **CRISP-DM** y comparamos dos modelos de ML clásico (SVM y Random Forest) con una red neuronal convolucional pequeña entrenada desde cero. El resultado se despliega en una app de **Streamlit** que acepta una imagen cargada o una foto de la cámara.
 
-#### -- Project Status: [Active, On-Hold, Completed]
+## Integrantes
 
-## Contributing Members
+| Nombre | GitHub |
+|---|---|
+| Ismael Barrionuevo | [@DavidRamirez206](https://github.com/DavidRamirez206) |
+| David Chicué | [@Davinerto9](https://github.com/Davinerto9) |
+| Daniel Martinez | [@damaral2005](https://github.com/damaral2005) |
 
-**Team Leader: [Full Name](https://github.com/[github handle])(@slackHandle)**
-**Instructor: [Full Name](https://github.com/[github handle])(@slackHandle)**
+## Estructura del repositorio
+```
+data/raw/          imágenes de Kaggle (no se suben a git)
+data/own/          fotos propias + labels.csv
+data/processed/    índices, particiones y características derivadas
+src/data/          carga, segmentación, preprocesamiento y partición
+src/features/      extracción de características
+src/models/        definición de modelos (CNN)
+src/training/      entrenamiento
+src/evaluation/    métricas y gráficas
+src/app/           app Streamlit
+notebooks/         EDA, modelado y resultados
+experiments/       logs/, checkpoints/, results/, figures/
+docs/              documentación extendida
+tests/             pruebas con pytest
+```
 
-#### Other Members:
+## Instalación
 
-|Name     |  Email   | 
-|---------|-----------------|
-|[Full Name](https://github.com/[github handle])| @johnDoe        |
-|[Full Name](https://github.com/[github handle]) |     @janeDoe    |
+### Con conda (recomendado)
+Desde la raíz del repositorio:
+```bash
+conda env create -f environment.yml
+conda activate fruit-quality
+```
+Si cambia `requirements.txt`, actualiza el ambiente con:
+```bash
+conda env update -f environment.yml --prune
+```
 
-## Contact
-* Feel free to contact the team leader or the instructor with any questions or if you are interested in contributing!
+### Con venv
+```bash
+python3.11 -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+```
 
+### Datos
+1. Descarga el dataset [Fruit Quality Classification](https://www.kaggle.com/datasets/ryandpark/fruit-quality-classification) de Kaggle.
+2. Descomprímelo dentro de `data/raw/`.
 
-## Project Intro/Objective
-The purpose of this project is ________. (Describe the main goals of the project and potential civic impact. Limit to a short paragraph, 3-6 Sentences)
+Las fotos propias del equipo van en `data/own/`, con sus etiquetas en `data/own/labels.csv`.
 
-### Partner
-This section should be added when there's a partner institution 
-* [Name of Partner organization/Government department etc..]
-* Website for partner
-* Partner contact: [Name of Contact], [slack handle of contact if any]
-* If you do not have a partner leave this section out
+## Uso
+Todos los comandos se ejecutan desde la raíz del repositorio, con el ambiente activado.
 
-### Methods Used
-* Inferential Statistics
-* Machine Learning
-* Data Visualization
-* Predictive Modeling
-* etc.
+**Notebooks:**
+```bash
+jupyter lab
+```
+Abre los notebooks de `notebooks/`; el kernel por defecto ya es el del ambiente activo. Si usas VS Code u otro Jupyter instalado fuera del ambiente, registra el kernel una sola vez y luego selecciona "Python (fruit-quality)":
+```bash
+python -m ipykernel install --user --name fruit-quality --display-name "Python (fruit-quality)"
+```
 
-### Technologies
-* R 
-* Python
-* D3
-* PostGres, MySql
-* Pandas, jupyter
-* HTML
-* JavaScript
-* etc. 
+**Pruebas:**
+```bash
+pytest
+```
 
-## Project Description
-(Provide a more detailed overview of the project.  Talk a bit about your data sources and what questions and hypotheses you are exploring. What specific data analysis/visualization and modeling work are you using to solve the problem? What blockers and challenges are you facing?  Feel free to number or bullet point things here)
+**App** (disponible cuando se implemente `src/app/app.py`):
+```bash
+streamlit run src/app/app.py
+```
 
-## Getting Started
-Instructions for contributors
-1. Clone this repo (for help see this [tutorial](https://help.github.com/articles/cloning-a-repository/)).
-2. Raw Data is being kept [here](Repo folder containing raw data) within this repo.
+## Créditos
 
-    *If using offline data mention that and how contributors may obtain the data )*
-    
-3. Data processing/transformation scripts are being kept [here](Repo folder containing data processing scripts/notebooks)
-4. etc...
+### Datos
+- **FruitNet**, el dataset original: V. Meshram y K. Patil, "FruitNet: Indian fruits image dataset with quality for machine learning applications", *Data in Brief*, vol. 40, art. 107686, 2022. DOI: [10.1016/j.dib.2021.107686](https://doi.org/10.1016/j.dib.2021.107686). El artículo se publicó con licencia [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+- **Fruit Quality Classification**, la versión de Kaggle que usamos: R. Park, publicada en [Kaggle](https://www.kaggle.com/datasets/ryandpark/fruit-quality-classification) con licencia CC0 (dominio público). Es una redistribución de FruitNet, por eso también citamos el trabajo original.
+- **Fotos propias:** tomadas por los integrantes del equipo para este proyecto.
 
-*If your project is well underway and setup is fairly complicated (ie. requires installation of many packages) create another "setup.md" file and link to it here*  
+### Plantilla
+La estructura del repositorio parte de la plantilla sugerida en el curso, que a su vez se basa en la del [Data Science Working Group de Code for San Francisco](https://github.com/sfbrigade/data-science-wg).
 
-5. Follow setup [instructions](Link to file)
+### Librerías
 
-## Featured Notebooks/Analysis/Deliverables
-* [Notebook/Markdown/Slide Deck Title](link)
-* [Notebook/Markdown/Slide DeckTitle](link)
-* [Blog Post](link)
+| Librería | Licencia |
+|---|---|
+| [NumPy](https://numpy.org/) | BSD-3-Clause |
+| [pandas](https://pandas.pydata.org/) | BSD-3-Clause |
+| [OpenCV](https://opencv.org/) (`opencv-python`) | Apache 2.0 (OpenCV), MIT (empaquetado) |
+| [scikit-learn](https://scikit-learn.org/) | BSD-3-Clause |
+| [TensorFlow / Keras](https://www.tensorflow.org/) | Apache 2.0 |
+| [Matplotlib](https://matplotlib.org/) | Matplotlib License (basada en PSF) |
+| [seaborn](https://seaborn.pydata.org/) | BSD-3-Clause |
+| [Streamlit](https://streamlit.io/) | Apache 2.0 |
+| [joblib](https://joblib.readthedocs.io/) | BSD-3-Clause |
+| [pytest](https://pytest.org/) | MIT |
+| [JupyterLab](https://jupyter.org/) e [ipykernel](https://github.com/ipython/ipykernel) | BSD-3-Clause |
 
-
+## Licencia
+El código de este repositorio se distribuye bajo la licencia **GNU General Public License v2.0**; consulta [LICENSE](LICENSE). Los datos de terceros conservan sus licencias originales, indicadas en [Créditos](#créditos).
