@@ -1,0 +1,25 @@
+# Entornos y cachés de Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Datos: las imágenes de Kaggle no se suben
+data/raw/*
+!data/raw/.gitkeep
+
+# Modelos entrenados (pesados)
+experiments/checkpoints/*
+!experiments/checkpoints/.gitkeep
+
+# Sistema operativo y editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Credenciales
+.env
+kaggle.json
