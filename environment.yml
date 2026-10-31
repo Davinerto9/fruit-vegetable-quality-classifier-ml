@@ -1,0 +1,10 @@
+# Ambiente conda del proyecto. Las librerías se instalan con pip desde
+# requirements.txt para que venv y conda usen exactamente la misma lista.
+name: fruit-quality
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - pip:
+      - -r requirements.txt
