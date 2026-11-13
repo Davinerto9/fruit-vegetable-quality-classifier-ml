@@ -4,10 +4,12 @@ Proyecto final del curso **Algoritmos y Programación III**, Universidad Icesi, 
 
 **Estado del proyecto:** en desarrollo.
 
+[Guía de avance y tareas pendientes](output/pdf/guia-proyecto-y-tareas.pdf)
+
 ## Objetivo
 A partir de una foto de **una** fruta o verdura sobre fondo uniforme, el sistema predice:
 
-- **Calidad:** al menos tres categorías (por ejemplo, buena, mala y mixta).
+- **Calidad:** buena (`good`), regular (`regular`) o mala (`bad`), según los [criterios de anotación](docs/criterios-calidad.md).
 - **Tamaño:** pequeño, mediano o grande, además de un diámetro normalizado.
 
 Seguimos la metodología **CRISP-DM** y comparamos dos modelos de ML clásico (SVM y Random Forest) con una red neuronal convolucional pequeña entrenada desde cero. El resultado se despliega en una app de **Streamlit** que acepta una imagen cargada o una foto de la cámara.
@@ -22,7 +24,7 @@ Seguimos la metodología **CRISP-DM** y comparamos dos modelos de ML clásico (S
 
 ## Estructura del repositorio
 ```
-data/raw/          imágenes de Kaggle (no se suben a git)
+data/raw/          imágenes de Kaggle y AgriFreshNET (no se suben a git)
 data/own/          fotos propias + labels.csv
 data/processed/    índices, particiones y características derivadas
 src/data/          carga, segmentación, preprocesamiento y partición
@@ -58,10 +60,18 @@ pip install -r requirements.txt
 ```
 
 ### Datos
-1. Descarga el dataset [Fruit Quality Classification](https://www.kaggle.com/datasets/ryandpark/fruit-quality-classification) de Kaggle.
-2. Descomprímelo dentro de `data/raw/`.
+1. Descarga [Fruit Quality Classification](https://www.kaggle.com/datasets/ryandpark/fruit-quality-classification) de Kaggle. Coloca las carpetas `Good Quality_Fruits`, `Bad Quality_Fruits` y `Mixed Qualit_Fruits` dentro de `data/raw/ryandpark/`.
+2. Descarga los datos procesados de [AgriFreshNET](https://data.mendeley.com/datasets/42m5tb7yv9/1). Coloca las carpetas `Fresh`, `Semi-Fresh` y `Rotten` de cada producto en `data/raw/agrifreshnet/Processed Data/`, directamente debajo de esa ruta.
 
 Las fotos propias del equipo van en `data/own/`, con sus etiquetas en `data/own/labels.csv`.
+
+Genera el inventario local después de preparar las tres fuentes:
+
+```bash
+python -m src.data.inventory
+```
+
+El comando escribe `data/processed/index.csv` con una fila por archivo y rutas relativas al repositorio. Consulta los [campos y criterios de agrupación](docs/criterios-calidad.md#inventario-de-imágenes) antes de usar el índice.
 
 ## Uso
 Todos los comandos se ejecutan desde la raíz del repositorio, con el ambiente activado.
@@ -70,7 +80,7 @@ Todos los comandos se ejecutan desde la raíz del repositorio, con el ambiente a
 ```bash
 jupyter lab
 ```
-Abre los notebooks de `notebooks/`; el kernel por defecto ya es el del ambiente activo. Si usas VS Code u otro Jupyter instalado fuera del ambiente, registra el kernel una sola vez y luego selecciona "Python (fruit-quality)":
+Abre [el notebook de análisis exploratorio](notebooks/01_eda.ipynb) después de generar el inventario. Incluye conteos por fuente, producto y clase, el desbalance por archivo y grupo, y ejemplos de las tres calidades. Si usas VS Code u otro Jupyter instalado fuera del ambiente, registra el kernel una sola vez y luego selecciona "Python (fruit-quality)":
 ```bash
 python -m ipykernel install --user --name fruit-quality --display-name "Python (fruit-quality)"
 ```

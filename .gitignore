@@ -6,9 +6,10 @@ __pycache__/
 .pytest_cache/
 .ipynb_checkpoints/
 
-# Datos: las imágenes de Kaggle no se suben
+# Datos externos e inventario generado
 data/raw/*
 !data/raw/.gitkeep
+data/processed/index.csv
 
 # Modelos entrenados (pesados)
 experiments/checkpoints/*
