@@ -57,7 +57,7 @@ AGRIFRESHNET_DIR = DATA_RAW / "agrifreshnet" / "Processed Data"
 
 # Etiquetas de las fotos propias (una fila por foto).
 OWN_LABELS = DATA_OWN / "labels.csv"
-# Índice de todas las imágenes: ruta, fuente, producto, calidad y grupo.
+# Índice de imágenes con sus etiquetas disponibles y grupos para las particiones.
 INDEX_CSV = DATA_PROCESSED / "index.csv"
 # Recortes cuadrados de la fruta generados por la segmentación.
 CROPS_DIR = DATA_PROCESSED / "crops"
@@ -87,11 +87,13 @@ IMG_SIZE = (128, 128)
 # Categorías de calidad (de mejor a peor).
 QUALITY_CLASSES = ["good", "regular", "bad"]
 
-# Carpetas de ryandpark -> calidad. "Mixed Qualit_Fruits" se excluye: son fotos con varias frutas.
+# Carpetas de ryandpark con etiqueta de calidad aplicable al inventario.
 RYANDPARK_QUALITY = {
     "Good Quality_Fruits": "good",
     "Bad Quality_Fruits": "bad",
 }
+# Se inventaría sin asignar calidad a la foto completa.
+RYANDPARK_MIXED_DIR = "Mixed Qualit_Fruits"
 
 # Prefijo de las carpetas de AgriFreshNET (en minúscula y con "_" como espacio) -> calidad.
 # "semi fresh" va antes que "fresh" para que se compare primero el prefijo más largo.
