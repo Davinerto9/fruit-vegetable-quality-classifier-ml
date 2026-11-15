@@ -1,4 +1,14 @@
-"""Divide los recortes candidatos sin separar las fotos de un mismo grupo."""
+"""
+Divide los recortes candidatos en train, val y test sin separar las fotos de un mismo grupo.
+
+Fase CRISP-DM: Preparación de datos
+Uso: python -m src.data.split [--manifest RUTA]
+
+Lee el manifiesto de src.data.prepare, quita los grupos apartados en la revisión visual
+(config.SEGMENTATION_EXCLUSIONS) y escribe splits.csv junto al manifiesto. Cada grupo completo
+va a una sola partición, con proporciones cercanas a 1 - VAL_SIZE - TEST_SIZE / VAL_SIZE / TEST_SIZE
+por archivo, calidad, fuente y producto.
+"""
 
 import argparse
 import csv
@@ -14,6 +24,24 @@ PARTITIONS = ("train", "val", "test")
 
 
 def assign_groups(rows: list[dict[str, str]]) -> dict[str, str]:
+    """
+    Asigna cada grupo a una partición comparando 256 permutaciones aleatorias de los grupos.
+
+    Para cada permutación cuenta, por partición, los archivos de cada estrato (total, calidad,
+    fuente x calidad y producto) y elige la de menor puntaje, en este orden de prioridad:
+    1) que train tenga las tres calidades; 2) que val y test también las tengan;
+    3) el menor error cuadrático ponderado frente a las proporciones esperadas.
+
+    Parámetros:
+        rows: filas candidatas con group, quality, source y product.
+
+    Retorna:
+        dict grupo -> "train" | "val" | "test".
+
+    Fórmula: E = sum_s w_s * ((n_ps - p_p * N_s) / max(N_s, 20))^2, con n_ps los archivos del
+        estrato s en la partición p, N_s el total del estrato, p_p la proporción objetivo y
+        w_s = 3 para total y calidad, 1 para el resto.
+    """
     groups = sorted({row["group"] for row in rows})
     if len(groups) < len(PARTITIONS):
         raise ValueError("Se requieren al menos tres grupos candidatos.")
@@ -73,12 +101,26 @@ def assign_groups(rows: list[dict[str, str]]) -> dict[str, str]:
 
 
 def run(manifest: Path) -> Path:
+    """
+    Genera splits.csv con los candidatos no excluidos y su partición, e imprime la cobertura.
+
+    Las exclusiones se buscan por archivo revisado (reviewed_file) y se aparta el grupo
+    completo al que pertenece hoy ese archivo, para que sigan valiendo si cambia el agrupamiento.
+
+    Parámetros:
+        manifest: manifest.csv de src.data.prepare.
+
+    Retorna:
+        Ruta del splits.csv escrito.
+    """
     with config.SEGMENTATION_EXCLUSIONS.open(encoding="utf-8", newline="") as file:
-        excluded_groups = {row["group"] for row in csv.DictReader(file)}
+        excluded_files = {row["reviewed_file"] for row in csv.DictReader(file)}
     with manifest.open(encoding="utf-8", newline="") as file:
         reader = csv.DictReader(file)
         columns = reader.fieldnames
-        candidates = [row for row in reader if row["decision"] == "candidate"]
+        all_rows = list(reader)
+    excluded_groups = {row["group"] for row in all_rows if row["filename"] in excluded_files}
+    candidates = [row for row in all_rows if row["decision"] == "candidate"]
     rows = [row for row in candidates if row["group"] not in excluded_groups]
     if not rows:
         raise ValueError("El manifiesto no contiene recortes candidatos.")
