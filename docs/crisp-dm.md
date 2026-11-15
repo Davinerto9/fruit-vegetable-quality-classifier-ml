@@ -92,5 +92,3 @@ La app de Streamlit permitirá cargar una foto o capturarla con la cámara. Usar
 - [ ] Integrar la metodología y el diagrama en el informe de máximo siete páginas, preparar el video de hasta diez minutos y cotejar la rúbrica de INTU.
 
 Las secciones 4, 6 y 7 de la consigna *Proyecto Final 26-2* guían el flujo, sus evidencias y el formato del informe. El documento *Competencias que se deben evaluar en el curso* detalla PI1, PI2 y PI3. La [guía de tareas del 13 de noviembre](../output/pdf/guia-proyecto-y-tareas.pdf) conserva el corte anterior del avance.
-
-La entrega **AgroQuality Classifier** de un semestre anterior se consultó como referencia para organizar las evidencias de CRISP-DM, la auditoría de duplicados y el análisis de errores. La copia local está en `Downloads/apo-final-project-agroquality-classifier-main/apo-final-project-agroquality-classifier-main`. Al retomar el trabajo, sus capítulos de preparación y evaluación sirven como guía para documentar los artefactos y resultados de este proyecto.
