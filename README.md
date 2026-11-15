@@ -91,7 +91,7 @@ Después de revisar los recortes candidatos, crea las particiones con:
 python -m src.data.split
 ```
 
-El comando genera `data/processed/crops/splits.csv` y reporta la cobertura por calidad, fuente y producto. Cada grupo pertenece a una sola partición. Los grupos marcados en la [revisión visual](data/annotations/segmentation_exclusions.csv) se excluyen, incluidas sus variantes. Para probar el flujo sobre una muestra, pasa `--manifest data/processed/pilot-crops/manifest.csv`.
+El manifiesto incluye, además de la decisión de cada foto, el número de frutas detectadas y estadísticas de imagen (dimensiones, brillo, contraste y nitidez) que usa el análisis exploratorio. El comando de partición genera `data/processed/crops/splits.csv` y reporta la cobertura por calidad, fuente y producto. Cada grupo pertenece a una sola partición. Los grupos marcados en la [revisión visual](data/annotations/segmentation_exclusions.csv) se excluyen, incluidas sus variantes. Para probar el flujo sobre una muestra, pasa `--manifest data/processed/pilot-crops/manifest.csv`.
 
 ## Uso
 Todos los comandos se ejecutan desde la raíz del repositorio, con el ambiente activado.
@@ -120,7 +120,7 @@ streamlit run src/app/app.py
 ### Datos
 - **FruitNet**, el dataset original: V. Meshram y K. Patil, "FruitNet: Indian fruits image dataset with quality for machine learning applications", *Data in Brief*, vol. 40, art. 107686, 2022. DOI: [10.1016/j.dib.2021.107686](https://doi.org/10.1016/j.dib.2021.107686). El artículo se publicó con licencia [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 - **Fruit Quality Classification**, la versión de Kaggle que usamos: R. Park, publicada en [Kaggle](https://www.kaggle.com/datasets/ryandpark/fruit-quality-classification) con licencia CC0 (dominio público). Es una redistribución de FruitNet, por eso también citamos el trabajo original.
-- F. Risdin, H. Salauddin, T. A. Tufa y M. J. Hossain, **AgriFreshNET Freshness and Shelf-Life Image Dataset**, versión 1, Mendeley Data, 2026. [DOI 10.17632/42m5tb7yv9.1](https://data.mendeley.com/datasets/42m5tb7yv9/1) · [Licencia CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+- F. Risdin, H. Salauddin, T. A. Tufa y M. J. Hossain, **AgriFreshNET Freshness and Shelf-Life Image Dataset**, versión 1, Mendeley Data, 2026. [DOI 10.17632/42m5tb7yv9.1](https://data.mendeley.com/datasets/42m5tb7yv9/1) · [Licencia CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). **Cambios realizados:** sus carpetas Fresh, Semi Fresh y Rotten se mapearon a nuestras clases good, regular y bad, y las imágenes se segmentan, recortan y redimensionan para entrenar los modelos. Los autores no respaldan este proyecto.
 - **Fotos propias:** tomadas por los integrantes del equipo para este proyecto.
 
 ### Plantilla
