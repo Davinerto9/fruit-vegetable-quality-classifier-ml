@@ -73,10 +73,13 @@ def assign_groups(rows: list[dict[str, str]]) -> dict[str, str]:
 
 
 def run(manifest: Path) -> Path:
+    with config.SEGMENTATION_EXCLUSIONS.open(encoding="utf-8", newline="") as file:
+        excluded_groups = {row["group"] for row in csv.DictReader(file)}
     with manifest.open(encoding="utf-8", newline="") as file:
         reader = csv.DictReader(file)
         columns = reader.fieldnames
-        rows = [row for row in reader if row["decision"] == "candidate"]
+        candidates = [row for row in reader if row["decision"] == "candidate"]
+    rows = [row for row in candidates if row["group"] not in excluded_groups]
     if not rows:
         raise ValueError("El manifiesto no contiene recortes candidatos.")
     if any(not row["group"] or row["quality"] not in config.QUALITY_CLASSES for row in rows):
@@ -100,6 +103,7 @@ def run(manifest: Path) -> Path:
         temporary.unlink(missing_ok=True)
 
     print(f"Particiones guardadas en {output}")
+    print(f"Recortes candidatos excluidos por revisión visual: {len(candidates) - len(rows)}")
     for partition in PARTITIONS:
         subset = [row for row in rows if assignment[row["group"]] == partition]
         qualities = Counter(row["quality"] for row in subset)

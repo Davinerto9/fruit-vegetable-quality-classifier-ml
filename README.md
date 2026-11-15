@@ -6,6 +6,8 @@ Proyecto final del curso **Algoritmos y Programación III**, Universidad Icesi, 
 
 [Guía de avance y tareas pendientes](output/pdf/guia-proyecto-y-tareas.pdf)
 
+[Resumen de avance y pendientes del 15 de noviembre](output/pdf/avance-y-pendientes-del-equipo.pdf)
+
 [Metodología CRISP-DM, diagrama y estado actual](docs/crisp-dm.md) · [Revisión de anotaciones y segmentación](docs/revision-anotaciones.md)
 
 ## Objetivo
@@ -89,7 +91,7 @@ Después de revisar los recortes candidatos, crea las particiones con:
 python -m src.data.split
 ```
 
-El comando genera `data/processed/crops/splits.csv` y reporta la cobertura por calidad, fuente y producto. Cada grupo pertenece a una sola partición. Para probar el flujo sobre una muestra, pasa `--manifest data/processed/pilot-crops/manifest.csv`.
+El comando genera `data/processed/crops/splits.csv` y reporta la cobertura por calidad, fuente y producto. Cada grupo pertenece a una sola partición. Los grupos marcados en la [revisión visual](data/annotations/segmentation_exclusions.csv) se excluyen, incluidas sus variantes. Para probar el flujo sobre una muestra, pasa `--manifest data/processed/pilot-crops/manifest.csv`.
 
 ## Uso
 Todos los comandos se ejecutan desde la raíz del repositorio, con el ambiente activado.
