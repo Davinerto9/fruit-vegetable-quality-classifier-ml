@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 520" role="img" aria-labelledby="title description">
+  <title id="title">Flujo CRISP-DM del clasificador de frutas y verduras</title>
+  <desc id="description">La definición de calidad guía el inventario de las tres fuentes. Después de revisar y segmentar las fotos, el equipo compara modelos, evalúa los resultados y los incorpora a Streamlit. Los errores de prueba orientan la revisión de datos y la demo retroalimenta el protocolo de captura.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#245b42"/>
+    </marker>
+    <marker id="feedback" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#6d7870"/>
+    </marker>
+  </defs>
+  <rect width="1040" height="520" fill="#fff"/>
+  <g font-family="Arial, sans-serif">
+    <text x="34" y="47" fill="#172c21" font-size="26" font-weight="700">CRISP-DM del clasificador de frutas y verduras</text>
+    <g fill="#eff5ef" stroke="#9cb8a5" stroke-width="1.4">
+      <rect x="34" y="72" width="288" height="149" rx="10"/>
+      <rect x="376" y="72" width="288" height="149" rx="10"/>
+      <rect x="718" y="72" width="288" height="149" rx="10"/>
+      <rect x="718" y="337" width="288" height="149" rx="10"/>
+      <rect x="376" y="337" width="288" height="149" rx="10"/>
+      <rect x="34" y="337" width="288" height="149" rx="10"/>
+    </g>
+    <g fill="#1b5136" font-size="19" font-weight="700">
+      <text x="50" y="107">1. Comprensión del negocio</text>
+      <text x="392" y="107">2. Comprensión de los datos</text>
+      <text x="734" y="107">3. Preparación de los datos</text>
+      <text x="734" y="372">4. Modelado</text>
+      <text x="392" y="372">5. Evaluación</text>
+      <text x="50" y="372">6. Despliegue</text>
+    </g>
+    <g fill="#243c2c" font-size="17">
+      <text x="50" y="142">
+        <tspan x="50">Una pieza sobre fondo uniforme</tspan>
+        <tspan x="50" dy="25">Tres clases de calidad visual</tspan>
+        <tspan x="50" dy="25">Tamaño relativo al encuadre</tspan>
+      </text>
+      <text x="392" y="142">
+        <tspan x="392">Kaggle y AgriFreshNET</tspan>
+        <tspan x="392" dy="25">Fotos y anotaciones propias</tspan>
+        <tspan x="392" dy="25">Inventario, grupos y desbalance</tspan>
+      </text>
+      <text x="734" y="142">
+        <tspan x="734">Revisión de etiquetas y máscaras</tspan>
+        <tspan x="734" dy="25">Recortes y diámetro normalizado</tspan>
+        <tspan x="734" dy="25">Partición por grupo</tspan>
+      </text>
+      <text x="734" y="407">
+        <tspan x="734">Línea base con regresión logística</tspan>
+        <tspan x="734" dy="25">SVM, Random Forest y CNN</tspan>
+        <tspan x="734" dy="25">Ajuste y selección en validación</tspan>
+      </text>
+      <text x="392" y="407">
+        <tspan x="392">F1 macro en prueba</tspan>
+        <tspan x="392" dy="25">Errores por clase y fuente</tspan>
+        <tspan x="392" dy="25">Validación del tamaño relativo</tspan>
+      </text>
+      <text x="50" y="407">
+        <tspan x="50">Streamlit con carga y cámara</tspan>
+        <tspan x="50" dy="25">Calidad visual y tamaño relativo</tspan>
+        <tspan x="50" dy="25">Avisos de captura y revisión</tspan>
+      </text>
+    </g>
+    <g fill="none" stroke="#245b42" stroke-width="2.6" marker-end="url(#arrow)">
+      <path d="M328 145 H369"/>
+      <path d="M670 145 H711"/>
+      <path d="M862 228 V330"/>
+      <path d="M711 410 H670"/>
+      <path d="M369 410 H328"/>
+    </g>
+    <g fill="none" stroke="#6d7870" stroke-width="2" stroke-dasharray="5 5" marker-end="url(#feedback)">
+      <path d="M53 330 V228"/>
+      <path d="M396 330 V228"/>
+    </g>
+    <g fill="#47554c" font-size="16">
+      <text x="68" y="284">Ajustar el protocolo de captura</text>
+      <text x="411" y="284">Revisar cobertura y etiquetas</text>
+    </g>
+  </g>
+</svg>

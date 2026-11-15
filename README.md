@@ -6,6 +6,8 @@ Proyecto final del curso **Algoritmos y Programación III**, Universidad Icesi, 
 
 [Guía de avance y tareas pendientes](output/pdf/guia-proyecto-y-tareas.pdf)
 
+[Metodología CRISP-DM, diagrama y estado actual](docs/crisp-dm.md) · [Revisión de anotaciones y segmentación](docs/revision-anotaciones.md)
+
 ## Objetivo
 A partir de una foto de **una** fruta o verdura sobre fondo uniforme, el sistema predice:
 
@@ -73,6 +75,14 @@ python -m src.data.inventory
 
 El comando escribe `data/processed/index.csv` con una fila por archivo y rutas relativas al repositorio. Consulta los [campos y criterios de agrupación](docs/criterios-calidad.md#inventario-de-imágenes) antes de usar el índice.
 
+El siguiente comando comprueba la segmentación y genera recortes de las fotos propias y una muestra externa.
+
+```bash
+python -m src.data.prepare --pilot
+```
+
+Puedes consultar las decisiones de preparación en `data/processed/pilot-crops/manifest.csv`. Al ejecutar el comando sin `--pilot`, se prepara el inventario completo en `data/processed/crops/`.
+
 ## Uso
 Todos los comandos se ejecutan desde la raíz del repositorio, con el ambiente activado.
 
@@ -100,6 +110,7 @@ streamlit run src/app/app.py
 ### Datos
 - **FruitNet**, el dataset original: V. Meshram y K. Patil, "FruitNet: Indian fruits image dataset with quality for machine learning applications", *Data in Brief*, vol. 40, art. 107686, 2022. DOI: [10.1016/j.dib.2021.107686](https://doi.org/10.1016/j.dib.2021.107686). El artículo se publicó con licencia [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 - **Fruit Quality Classification**, la versión de Kaggle que usamos: R. Park, publicada en [Kaggle](https://www.kaggle.com/datasets/ryandpark/fruit-quality-classification) con licencia CC0 (dominio público). Es una redistribución de FruitNet, por eso también citamos el trabajo original.
+- F. Risdin, H. Salauddin, T. A. Tufa y M. J. Hossain, **AgriFreshNET Freshness and Shelf-Life Image Dataset**, versión 1, Mendeley Data, 2026. [DOI 10.17632/42m5tb7yv9.1](https://data.mendeley.com/datasets/42m5tb7yv9/1) · [Licencia CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 - **Fotos propias:** tomadas por los integrantes del equipo para este proyecto.
 
 ### Plantilla
