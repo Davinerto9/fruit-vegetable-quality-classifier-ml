@@ -86,7 +86,8 @@ La app de Streamlit permitirá cargar una foto o capturarla con la cámara. Usar
 - [x] Documentar las seis fases con evidencia disponible y publicar el diagrama personalizado.
 - [x] Auditar los 17 grupos en conflicto y registrar la revisión visual de los seis mangos y el piloto de recortes.
 - [ ] Confirmar las propuestas de calidad de los mangos sobre las piezas aisladas, recuperar sus tamaños mediante medidas o fotos de referencia, y verificar los IDs con quien tomó las fotos cuando la identidad sea dudosa.
-- [ ] Revisar las incidencias de segmentación, preparar los recortes de todo el conjunto elegible y crear las particiones por grupo.
+- [x] Rehacer y verificar los contornos de las tres incidencias propias detectadas en el piloto. Implementar y probar las particiones por grupo.
+- [ ] Completar la preparación del inventario y verificar la cobertura de las particiones del conjunto completo.
 - [ ] Entrenar, evaluar y desplegar. Incorporar el planteamiento matemático, las conclusiones técnicas y el análisis final de impactos.
 - [ ] Integrar la metodología y el diagrama en el informe de máximo siete páginas, preparar el video de hasta diez minutos y cotejar la rúbrica de INTU.
 

@@ -12,6 +12,7 @@ data/raw/*
 data/processed/index.csv
 data/processed/crops/
 data/processed/pilot-crops/
+data/processed/.prepare-*/
 
 # Modelos entrenados (pesados)
 experiments/checkpoints/*

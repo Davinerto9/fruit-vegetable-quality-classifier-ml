@@ -83,6 +83,14 @@ python -m src.data.prepare --pilot
 
 Puedes consultar las decisiones de preparación en `data/processed/pilot-crops/manifest.csv`. Al ejecutar el comando sin `--pilot`, se prepara el inventario completo en `data/processed/crops/`.
 
+Después de revisar los recortes candidatos, crea las particiones con:
+
+```bash
+python -m src.data.split
+```
+
+El comando genera `data/processed/crops/splits.csv` y reporta la cobertura por calidad, fuente y producto. Cada grupo pertenece a una sola partición. Para probar el flujo sobre una muestra, pasa `--manifest data/processed/pilot-crops/manifest.csv`.
+
 ## Uso
 Todos los comandos se ejecutan desde la raíz del repositorio, con el ambiente activado.
 

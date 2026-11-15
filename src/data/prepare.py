@@ -2,6 +2,7 @@
 
 import argparse
 import csv
+import json
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -28,10 +29,30 @@ def write_png(path: Path, image: np.ndarray) -> None:
     buffer.tofile(path)
 
 
-def prepare_record(row: dict[str, str], output: Path, *, pilot: bool) -> dict:
+def manual_segment(image: np.ndarray, points: list, reference_size: list) -> dict:
+    """Aplica un contorno revisado sobre la imagen original."""
+    height, width = image.shape[:2]
+    reference_width, reference_height = reference_size
+    if width * reference_height != height * reference_width:
+        raise ValueError("El contorno manual no corresponde a la orientación de la foto.")
+    scale = np.array([width / reference_width, height / reference_height])
+    contour = np.rint(np.asarray(points) * scale).astype(np.int32).reshape(-1, 1, 2)
+    mask = np.zeros((height, width), np.uint8)
+    cv2.drawContours(mask, [contour], -1, 255, cv2.FILLED)
+    return {
+        "status": "ok",
+        "mask": mask,
+        "contour": contour,
+        "crop": segmentation.square_crop(image, cv2.boundingRect(contour)),
+        "d_norm": segmentation.normalized_diameter(contour, image.shape),
+    }
+
+
+def prepare_record(row: dict[str, str], output: Path, manual: dict, *, pilot: bool) -> dict:
     record = {
         **row,
         "segmentation_status": "",
+        "segmentation_method": "",
         "decision": "excluded",
         "detail": "",
         "d_norm": "",
@@ -49,7 +70,13 @@ def prepare_record(row: dict[str, str], output: Path, *, pilot: bool) -> dict:
         if image is None:
             record["segmentation_status"] = "discard: unreadable"
             return record
-        result = segmentation.process(image)
+        points = manual["contours"].get(row["filename"])
+        if points is None:
+            result = segmentation.process(image)
+            record["segmentation_method"] = "automatic"
+        else:
+            result = manual_segment(image, points, manual["reference_size"])
+            record["segmentation_method"] = "manual"
     except (OSError, cv2.error) as error:
         record["segmentation_status"] = "review: processing error"
         if eligible:
@@ -109,18 +136,26 @@ def run(pilot: bool) -> None:
     if output.exists():
         raise FileExistsError(f"Archiva o mueve el resultado anterior antes de repetir: {output}")
 
+    with config.OWN_CONTOURS.open(encoding="utf-8") as file:
+        manual = json.load(file)
+
     # Evita multiplicar los hilos internos de OpenCV por los del procesamiento paralelo.
     cv2.setNumThreads(1)
-    columns = fields + ["segmentation_status", "decision", "detail", "d_norm", "crop", "crop_mask"]
-    with TemporaryDirectory(dir=output.parent) as temporary:
+    columns = fields + [
+        "segmentation_status", "segmentation_method", "decision", "detail", "d_norm", "crop", "crop_mask",
+    ]
+    with TemporaryDirectory(prefix=".prepare-", dir=output.parent) as temporary:
         staging = Path(temporary) / output.name
         staging.mkdir()
         with (staging / "manifest.csv").open("w", encoding="utf-8", newline="") as file:
             writer = csv.DictWriter(file, fieldnames=columns)
             writer.writeheader()
             with ThreadPoolExecutor(max_workers=6) as pool:
-                records = pool.map(lambda row: prepare_record(row, staging, pilot=pilot), rows)
-                writer.writerows(records)
+                records = pool.map(lambda row: prepare_record(row, staging, manual, pilot=pilot), rows)
+                for count, record in enumerate(records, start=1):
+                    writer.writerow(record)
+                    if not pilot and count % 2000 == 0:
+                        print(f"{count}/{len(rows)} fotos procesadas", flush=True)
         publish(staging, output)
 
     print(f"{len(rows)} fotos registradas en {(output / 'manifest.csv').relative_to(config.ROOT)}")

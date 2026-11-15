@@ -57,6 +57,8 @@ AGRIFRESHNET_DIR = DATA_RAW / "agrifreshnet" / "Processed Data"
 
 # Etiquetas de las fotos propias (una fila por foto).
 OWN_LABELS = DATA_OWN / "labels.csv"
+# Contornos revisados de fotos propias que requieren corrección manual.
+OWN_CONTOURS = DATA_OWN / "contours.json"
 # Índice de imágenes con sus etiquetas disponibles y grupos para las particiones.
 INDEX_CSV = DATA_PROCESSED / "index.csv"
 # Recortes cuadrados de la fruta generados por la segmentación.
