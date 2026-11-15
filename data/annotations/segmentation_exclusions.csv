@@ -1,8 +1,8 @@
 group,reviewed_file,reason
-ryandpark:Bad Quality_Fruits:lime:img_7456,data/raw/ryandpark/Bad Quality_Fruits/Lime_Bad/IMG_7456.JPG,multiple_pieces
-ryandpark:Good Quality_Fruits:banana:img_8815,data/raw/ryandpark/Good Quality_Fruits/Banana_Good/IMG_8815.JPG,multiple_pieces
-ryandpark:Good Quality_Fruits:banana:img_9116,data/raw/ryandpark/Good Quality_Fruits/Banana_Good/IMG_9116.JPG,multiple_pieces
-ryandpark:Good Quality_Fruits:pomegranate:20190820_144319,data/raw/ryandpark/Good Quality_Fruits/Pomegranate_Good/20190820_144319_23212.jpg,multiple_pieces
-ryandpark:Good Quality_Fruits:pomegranate:20190820_150515,data/raw/ryandpark/Good Quality_Fruits/Pomegranate_Good/20190820_150515_24172.jpg,multiple_pieces
-ryandpark:Good Quality_Fruits:pomegranate:20190820_153817,data/raw/ryandpark/Good Quality_Fruits/Pomegranate_Good/20190820_153817_26092.jpg,multiple_pieces
-ryandpark:Good Quality_Fruits:pomegranate:img20200728125535,data/raw/ryandpark/Good Quality_Fruits/Pomegranate_Good/IMG20200728125535_27052.jpg,multiple_pieces
+ryandpark:capture:img_745x,data/raw/ryandpark/Bad Quality_Fruits/Lime_Bad/IMG_7456.JPG,multiple_pieces
+ryandpark:capture:img_881x,data/raw/ryandpark/Good Quality_Fruits/Banana_Good/IMG_8815.JPG,multiple_pieces
+ryandpark:capture:img_911x,data/raw/ryandpark/Good Quality_Fruits/Banana_Good/IMG_9116.JPG,multiple_pieces
+ryandpark:capture:20190820_1443,data/raw/ryandpark/Good Quality_Fruits/Pomegranate_Good/20190820_144319_23212.jpg,multiple_pieces
+ryandpark:capture:20190820_1505,data/raw/ryandpark/Good Quality_Fruits/Pomegranate_Good/20190820_150515_24172.jpg,multiple_pieces
+ryandpark:capture:20190820_1538,data/raw/ryandpark/Good Quality_Fruits/Pomegranate_Good/20190820_153817_26092.jpg,multiple_pieces
+ryandpark:capture:20200728_1255,data/raw/ryandpark/Good Quality_Fruits/Pomegranate_Good/IMG20200728125535_27052.jpg,multiple_pieces

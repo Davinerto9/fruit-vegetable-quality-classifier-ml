@@ -32,7 +32,10 @@ Constantes:
   productos con datos de entrenamiento (el alcance del modelo).
 - AUG_PREFIX: patrón de las copias aumentadas de AgriFreshNET, para agruparlas
   con su foto original al particionar.
+- CAPTURE_STAMP, CAPTURE_NUMBER_BLOCK: reglas para agrupar las ráfagas de ryandpark
+  tomadas en el mismo minuto o con números consecutivos.
 - SEG_*, CROP_MARGIN, GRAY_TOL: parámetros de la segmentación.
+- STATS_SIDE: tamaño de referencia para las estadísticas de calidad de imagen.
 - SIZE_THRESHOLDS: intervalos del diámetro normalizado para cada tamaño.
 - TEST_SIZE, VAL_SIZE: proporciones de las particiones de prueba y validación.
 """
@@ -130,6 +133,12 @@ PRODUCTS = sorted(set(PRODUCT_NAMES.values()))
 # Prefijo de las copias aumentadas de AgriFreshNET ("aug_12_IMG_x.jpg" es copia de "IMG_x.jpg").
 AUG_PREFIX = r"^aug_\d+_"
 
+# Fecha y hora en los nombres de ryandpark ("IMG_20190902_111542_1", "20190820_153401_25723",
+# "IMG20200728182100"): se captura hasta el minuto para agrupar las ráfagas de una misma escena.
+CAPTURE_STAMP = r"(20\d{6})_?(\d{4})\d{2}"
+# Las fotos de ryandpark sin fecha ("IMG_2427") se agrupan en bloques de números consecutivos.
+CAPTURE_NUMBER_BLOCK = 10
+
 # --- Segmentación ------------------------------------------------------------
 
 # Lado mayor (px) al que se reduce la imagen para segmentar; la máscara se reescala al original.
@@ -138,6 +147,8 @@ SEG_WORK_SIZE = 320
 SEG_MIN_AREA = 0.02
 # Fracción máxima de la imagen que puede ocupar la fruta; más indica que se tomó el fondo.
 SEG_MAX_AREA = 0.90
+# Lado mayor (px) al que se reduce la foto para medir brillo, contraste y nitidez.
+STATS_SIDE = 512
 # Margen alrededor de la fruta en el recorte cuadrado, como fracción de su lado mayor.
 CROP_MARGIN = 0.10
 # Promedio máximo de |a-128| + |b-128| (Lab) para considerar una foto en escala de grises.
