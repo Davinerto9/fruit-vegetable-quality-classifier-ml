@@ -10,7 +10,7 @@ Los 17 grupos, incluidas sus variantes, quedan fuera del conjunto supervisado mi
 
 ## Fotos propias
 
-Las observaciones de los seis mangos quedaron en la columna `notes` de las anotaciones. La propuesta es `good` para el mango 002 y `regular` para los mangos 001 y 003 a 006, con base en la pieza de primer plano. Las seis fotos tienen otros productos en el encuadre. Las de los mangos 003 y 006 requieren especial revisión del roce y de la lesión oscura, respectivamente. Quedan pendientes la confirmación de la etiqueta sobre la pieza aislada y una referencia de tamaño. El encuadre de las fotos solo permite estimar una medida relativa a la imagen.
+Las etiquetas quedaron confirmadas para la pieza de primer plano: `good` para mango_002 y `regular` para mango_001 y mango_003 a mango_006. Las seis fotos permanecen en un solo grupo. Mango_002 y mango_005 pasan segmentación automática; las otras cuatro quedan en revisión porque el algoritmo detecta dos frutas. El tamaño y el ID de pieza siguen vacíos; el tamaño no se usa para el clasificador de calidad.
 
 Se mantiene `mango_session_001` como un solo grupo. Las tomas de banano y mandarina con identidad incierta también conservan su agrupación por sesión. Se debe contrastar la identidad con quien tomó las fotos antes de asignar IDs adicionales. [Anotaciones propias](../data/own/labels.csv)
 
@@ -32,7 +32,7 @@ El piloto procesa las 42 fotos propias y toma una de cada 300 filas entre las im
 
 - `banana_good_007.jpg` muestra un racimo. Aunque la segmentación devolvió `ok`, la anotación de varias piezas impidió generar un recorte candidato.
 - `banana_good_001.jpg` se marcó como dos piezas aunque visualmente se aprecia un solo banano.
-- Cuatro de seis fotos de mango se marcaron como múltiples. Las otras dos pasaron el control automático y quedaron excluidas por su anotación pendiente.
+- Durante el piloto, cuatro de seis fotos de mango se marcaron como múltiples. Tras confirmar las calidades, mango_002 y mango_005 pasan los controles automáticos; mango_001, mango_003, mango_004 y mango_006 siguen en revisión de segmentación.
 - En la revisión visual de los recortes propios, las máscaras de `orange_good_003.jpg` y `orange_good_004.jpg` perdieron parte del contorno superior pese al estado `ok`.
 
 Como diagnóstico de tamaño, se compararon las etiquetas propias con los umbrales provisionales. Entre los 34 recortes propios candidatos, los dos anotados como pequeños también dieron pequeño. De los 32 anotados como medianos, 23 dieron pequeño y nueve mediano. Estos conteos se calcularon antes de corregir las máscaras detectadas y con fotos de encuadres distintos. Los rangos actuales requieren validación con capturas controladas.
@@ -45,8 +45,10 @@ Para aplicar el flujo al inventario completo, ejecutar `python -m src.data.prepa
 
 Se trazaron y verificaron los contornos de `banana_good_001.jpg`, `orange_good_003.jpg` y `orange_good_004.jpg` sobre sus fotos originales. La preparación aplica estos contornos antes de calcular el diámetro y guarda la procedencia de cada máscara como `manual` o `automatic`. [Contornos revisados](../data/own/contours.json)
 
-La revisión visual de los 71 recortes externos candidatos del piloto encontró siete escenas de Kaggle con varias piezas (lima, banano y granada). Se registró cada imagen que motivó la exclusión y se apartó su grupo completo de las particiones. La partición busca el grupo actual de cada imagen registrada, de modo que la exclusión se mantiene si cambia el agrupamiento; con el agrupamiento por ráfaga de captura, las siete exclusiones apartan 430 fotos. También se observaron manos, sombras y contornos incompletos en otros recortes. Al auditar el conjunto completo, conviene verificar estas incidencias por fuente y producto. [Grupos excluidos tras la revisión](../data/annotations/segmentation_exclusions.csv)
+La revisión visual por estratos del manifiesto completo encontró tres escenas adicionales con varias frutas o productos dentro del mismo recorte: una lima clasificada como bad, una guayaba good y una granada good. Se registró una imagen por escena y el split aparta el grupo completo correspondiente. Las siete exclusiones iniciales del piloto se asociaron a siete grupos y retiraban 15 candidatos del manifiesto completo (no 430); al sumar estas tres escenas, la lista contiene diez referencias de exclusión. También se observaron manos, sombras y contornos incompletos en la muestra. [Grupos excluidos tras la revisión visual](../data/annotations/segmentation_exclusions.csv)
 
-El comando `python -m src.data.split` filtra los grupos excluidos tras la revisión visual y asigna cada grupo restante a entrenamiento, validación o prueba. Busca proporciones cercanas a 70/15/15 por grupo y prioriza la cobertura de las tres calidades al comparar asignaciones. El resumen en consola muestra la distribución por calidad, fuente y producto. [Código de partición](../src/data/split.py)
+El comando `python -m src.data.split` filtra los grupos excluidos tras la revisión visual y asigna cada grupo restante a entrenamiento, validación o prueba. Busca proporciones cercanas a 70/15/15 por grupo y prioriza que train tenga las tres calidades y todos los productos disponibles; después favorece la cobertura de clases en val/test y el balance por calidad, fuente y producto. El único grupo con mango quedó en train; no permite evaluar mango de forma independiente. [Código de partición](../src/data/split.py)
 
+
+La partición completa queda en `data/processed/crops/splits.csv`: 23.687 recortes, con 16.456 en train, 3.557 en val y 3.674 en test. Los 13.192 grupos no se comparten entre particiones; las diez referencias de exclusión se resolvieron y ningún grupo excluido aparece en el split. Todos los registros son candidatos únicos y tienen recorte y máscara. El grupo de mango (dos candidatos) quedó en train; no hay datos de mango en val/test para medir generalización.
 La prueba con el manifiesto del piloto dejó 98 recortes en 70 grupos. Se verificó que los conjuntos de entrenamiento, validación y prueba tienen 50, 10 y 10 grupos, respectivamente, sin intersecciones y con ejemplos de las tres calidades.

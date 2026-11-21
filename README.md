@@ -4,6 +4,8 @@ Proyecto final del curso **Algoritmos y Programación III**, Universidad Icesi, 
 
 **Estado del proyecto:** en desarrollo.
 
+[Contexto y estado detallado del proyecto](docs/contexto-y-estado-proyecto.md)
+
 [Guía de avance y tareas pendientes](output/pdf/guia-proyecto-y-tareas.pdf)
 
 [Resumen de avance y pendientes del 15 de noviembre](output/pdf/avance-y-pendientes-del-equipo.pdf)

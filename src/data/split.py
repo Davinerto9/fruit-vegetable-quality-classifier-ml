@@ -29,8 +29,9 @@ def assign_groups(rows: list[dict[str, str]]) -> dict[str, str]:
 
     Para cada permutación cuenta, por partición, los archivos de cada estrato (total, calidad,
     fuente x calidad y producto) y elige la de menor puntaje, en este orden de prioridad:
-    1) que train tenga las tres calidades; 2) que val y test también las tengan;
-    3) el menor error cuadrático ponderado frente a las proporciones esperadas.
+    1) que train tenga las tres calidades; 2) que train represente todos los productos;
+    3) que val y test también tengan las tres calidades; 4) el menor error cuadrático
+    ponderado frente a las proporciones esperadas.
 
     Parámetros:
         rows: filas candidatas con group, quality, source y product.
@@ -70,6 +71,9 @@ def assign_groups(rows: list[dict[str, str]]) -> dict[str, str]:
     expected = proportions[:, None] * totals
     quality_cols = slice(1, 1 + len(quality))
     possible_coverage = np.minimum(3, (counts[:, quality_cols] > 0).sum(axis=0))
+    product_cols = [
+        i for i, (kind, _) in enumerate(strata) if kind == "product"
+    ]
     weights = np.array([3 if kind in ("total", "quality") else 1 for kind, _ in strata])
 
     rng = np.random.default_rng(config.SEED)
@@ -83,10 +87,12 @@ def assign_groups(rows: list[dict[str, str]]) -> dict[str, str]:
         parts = (train, val, test)
         actual = np.array([counts[part].sum(axis=0) for part in parts])
         has_quality = actual[:, quality_cols] > 0
+        has_product = actual[:, product_cols] > 0
         coverage = has_quality.sum(axis=0)
         share_error = (actual - expected) / np.maximum(totals, 20)
         score = (
             int((~has_quality[0]).sum()),
+            int((~has_product[0]).sum()),
             int((possible_coverage - coverage).sum()),
             float((weights * share_error**2).sum()),
         )
