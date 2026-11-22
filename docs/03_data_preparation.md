@@ -49,4 +49,4 @@ El split final busca proporciones aproximadas de 70/15/15 para entrenamiento, va
 
 ## Conclusión de la fase
 
-El pipeline inicial de preparación está implementado y generó artefactos completos y de piloto. La calidad final de los recortes todavía depende de revisión humana y la partición completa no existe. Modelado comienza cuando esas dos condiciones se resuelvan.
+El pipeline de preparación generó el manifiesto y la partición completa por grupos; la separación se verificó sin grupos compartidos y con archivos/máscaras presentes. La auditoría visual fue estratificada, no individual para todos los candidatos, y cuatro fotos de mango siguen en revisión de segmentación. El modelado inicial puede comenzar con los candidatos aceptados, dejando documentado que los resultados son provisionales hasta completar esa revisión.

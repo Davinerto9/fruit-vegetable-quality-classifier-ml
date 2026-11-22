@@ -25,15 +25,15 @@ La adaptación sigue la guía IBM SPSS Modeler CRISP-DM Guide, versión 18.3, y 
 
 El prototipo recibe una fotografía de una fruta o verdura individual sobre un fondo sencillo y clasifica su apariencia externa visible como good, regular o bad. Calcula además un diámetro equivalente normalizado respecto al lado mayor de la imagen. Esta medida expresa ocupación relativa de la fotografía, no tamaño físico en centímetros. La solución apoya la inspección humana; no determina inocuidad, estado interno, precio ni aptitud para el consumo.
 
-Se combinarán Fruit Quality Classification de Kaggle, AgriFreshNET y fotos propias. La comparación prevista incluye regresión logística como línea base, SVM, Random Forest y una CNN pequeña desde cero. La interfaz prevista es Streamlit. Al 21 de noviembre de 2026, el inventario y la partición completa por grupos están generados y verificados estructuralmente. La revisión visual de candidatos fue estratificada, no individual para todo el conjunto; todavía no hay modelos entrenados, evaluación final ni aplicación implementada.
+Se combinan Fruit Quality Classification de Kaggle, AgriFreshNET y fotos propias. La comparación incluye regresión logística, SVM lineal, Random Forest y CNN RGB. La interfaz prevista es Streamlit. Al 21 de noviembre de 2026, el inventario y la partición completa por grupos están generados y verificados estructuralmente. La revisión visual de candidatos fue estratificada, no individual para todo el conjunto. Los cuatro modelos se entrenaron y se compararon inicialmente en validation; la auditoría por imagen debe repetirse con scikit-learn 1.7.2 porque la corrida reciente cargó los checkpoints clásicos en 1.9.1. Test continúa reservado y la aplicación no está implementada.
 
 | Fase | Estado documentado |
 | --- | --- |
 | Comprensión del negocio | Alcance, criterios iniciales, riesgos, ética e impactos definidos. |
 | Comprensión de los datos | Inventario y EDA inicial disponibles; persisten diferencias entre fuentes y conflictos. |
 | Preparación | Etiquetas pendientes adjudicadas; manifiesto actualizado y split completo generado/verificado. Falta completar la revisión visual de candidatos fuera de la muestra estratificada. |
-| Modelado | Diseño de comparación establecido; código de modelos y entrenamiento pendiente. |
-| Evaluación | Métricas y protocolo definidos; no hay resultados de modelos. |
+| Modelado | Extractor clásico, regresión logística, SVM, Random Forest y CNN RGB implementados y entrenados. Los checkpoints locales no se suben a Git. |
+| Evaluación | Hay métricas iniciales de validation para los cuatro modelos; el audit es provisional por la diferencia de scikit-learn 1.7.2/1.9.1 y la revisión visual está pendiente. Test sigue reservado y sin consultar. |
 | Despliegue | Plan de Streamlit definido; interfaz pendiente. |
 
 La documentación del plan no se considera evidencia de una implementación o resultado. Cada fase se actualizará cuando sus artefactos reales estén disponibles.

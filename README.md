@@ -6,6 +6,8 @@ Proyecto final del curso **Algoritmos y Programación III**, Universidad Icesi, 
 
 [Contexto y estado detallado del proyecto](docs/contexto-y-estado-proyecto.md)
 
+[Guía del equipo: evaluación y auditoría](docs/modeling_team_guide.md) · [Cierre de modelado](docs/modeling_session_wrapup.md) · [Script para exportar resumen PDF](scripts/export_modeling_summary_pdf.py)
+
 [Guía de avance y tareas pendientes](output/pdf/guia-proyecto-y-tareas.pdf)
 
 [Resumen de avance y pendientes del 15 de noviembre](output/pdf/avance-y-pendientes-del-equipo.pdf)
@@ -18,7 +20,7 @@ A partir de una foto de **una** fruta o verdura sobre fondo uniforme, el sistema
 - **Calidad:** buena (`good`), regular (`regular`) o mala (`bad`), según los [criterios de anotación](docs/criterios-calidad.md).
 - **Tamaño:** pequeño, mediano o grande, además de un diámetro normalizado.
 
-Seguimos la metodología **CRISP-DM** y comparamos dos modelos de ML clásico (SVM y Random Forest) con una red neuronal convolucional pequeña entrenada desde cero. El resultado se despliega en una app de **Streamlit** que acepta una imagen cargada o una foto de la cámara.
+Seguimos la metodología **CRISP-DM**. El modelado entrenó regresión logística, SVM lineal y Random Forest sobre atributos clásicos, además de una CNN RGB. Los resultados de validation son preliminares y el conjunto test sigue reservado. La aplicación de **Streamlit** está planeada, pero aún no está implementada. Consulta la [guía de modelado y auditoría](docs/modeling_team_guide.md) antes de reproducir resultados.
 
 ## Integrantes
 

@@ -2,7 +2,7 @@
 
 **Revisión:** 21 de noviembre de 2026  
 **Repositorio activo:** `Davinerto9/fruit-vegetable-quality-classifier-ml`  
-**Rama revisada:** `main`, en `813ec0e` (`docs: describe burst grouping and AgriFreshNET changes`)
+**Último commit confirmado:** `main`, en `1d33148` (`data: finalize annotations and group-safe split workflow`). El modelado descrito abajo corresponde a cambios locales posteriores a ese commit.
 
 Este archivo conserva el contexto para continuar el proyecto sin confundir la entrega actual con la referencia del semestre anterior. Las rutas, conteos y estados de datos aquí descritos corresponden a la copia local revisada en la fecha indicada; los archivos generados dentro de `data/processed/` están ignorados por Git y pueden cambiar al regenerarlos.
 
@@ -45,7 +45,7 @@ El inventario está agrupado para evitar que versiones de una misma captura pase
 
 ## 4. Qué está implementado en el repositorio activo
 
-La estructura separa datos, código, documentación, experimentos y pruebas. El código implementado hasta ahora se concentra en la fase de preparación:
+La estructura separa datos, código, documentación, experimentos y pruebas. La implementación cubre preparación y modelado clásico inicial:
 
 - `src/config.py`: rutas relativas, clases, nombres canónicos de productos, semilla 42, dimensiones 128×128, umbrales provisionales de tamaño, parámetros de segmentación y proporciones objetivo 70/15/15.
 - `src/data/inventory.py`: lee las tres fuentes, aplica las etiquetas disponibles, registra los estados pendientes/conflictivos y construye grupos para las particiones.
@@ -58,7 +58,7 @@ La estructura separa datos, código, documentación, experimentos y pruebas. El 
 
 **Estado real de artefactos locales:** `data/processed/index.csv` tiene 33.728 filas. El manifiesto completo (`data/processed/crops/manifest.csv`) tiene 23.706 `candidate`, 7.477 `review` y 2.545 `excluded`. La auditoría visual revisó una muestra estratificada de 44 candidatos y registró diez referencias de exclusión de grupos; la revisión individual del total de candidatos todavía está pendiente. El split completo existe con 23.687 filas: 16.456 train, 3.557 val y 3.674 test; grupos disjuntos, archivos y máscaras presentes, y 19 candidatos removidos por las exclusiones visuales. El split piloto sigue disponible como diagnóstico y no sustituye al completo.
 
-No están implementados todavía: extracción formal de características, modelos (regresión logística de línea base, SVM, Random Forest y CNN), entrenamiento/tuning, evaluación, resultados o gráficas finales, guardado de modelos, ni aplicación Streamlit (`src/features/`, `src/models/`, `src/training/`, `src/evaluation/` y `src/app/` contienen sólo inicializadores vacíos). El README describe pasos futuros como si fueran el flujo previsto, no evidencia de una app o modelos ya disponibles.
+Estado actualizado al 21 de noviembre de 2026: extractor de 359 atributos clásicos y los cuatro modelos (regresión logística, SVM lineal, Random Forest y CNN RGB) entrenados sobre el mismo split. Los resultados iniciales de validation están en `experiments/results/`; los checkpoints locales están ignorados por Git por tamaño. La CNN se entrenó hasta la época 40 y su evaluación de validation cargó el checkpoint sin reentrenar. No se ha evaluado test y la aplicación Streamlit sigue pendiente. Los modelos clásicos se guardaron con scikit-learn 1.7.2, pero un audit posterior se ejecutó con 1.9.1 y emitió `InconsistentVersionWarning`; repetirlo con la versión alineada antes de usar errores por imagen como evidencia final.
 
 ## 5. Guía del semestre anterior
 
@@ -73,11 +73,11 @@ Lo útil como guía es la cadena de evidencia: **decisión → artefacto reprodu
 3. La partición completa ya se generó. Se verificaron exclusiones, cobertura global, grupos disjuntos, archivos y máscaras. El único grupo de mango se asignó a train y no aporta evaluación independiente.
 4. Analizar la fuga de atajos por fuente/fondo/calidad: `regular` está fuertemente asociado a AgriFreshNET. Reportar cobertura y rendimiento por fuente/producto cuando el soporte lo permita; no presentar un promedio global sin sus límites.
 5. Validar el tamaño: los umbrales son provisionales y las fotos no tienen encuadre controlado. El EDA documenta que 23 de 32 recortes propios anotados `medium` quedaron bajo el umbral provisional de `small`. Revisar máscaras y protocolo antes de afirmar que la categoría de tamaño es fiable.
-6. Implementar y comparar al menos dos modelos clásicos más una CNN; ajustar hiperparámetros con validación cruzada que respete `group`, nunca usar test para seleccionar modelo y ajustar cualquier escalado/pesos sólo con train.
-7. Evaluar con F1 macro y métricas por clase, matriz de confusión, errores `bad → good`, resultados por fuente/producto con soporte, generalización y sobreajuste; registrar gráficas, hiperparámetros, semilla y manifiesto usado.
-8. Desarrollar la interfaz con el mismo preprocesamiento de entrenamiento y mensajes claros para fotos inválidas, varias piezas y límites de uso.
-9. Completar PI1, PI2 y PI3 con evidencia matemática, ética e impactos; actualizar cifras y redactar informe IEEE de hasta 7 páginas, referencias verificadas y video de hasta 10 minutos.
+6. Repetir el audit de validation con scikit-learn 1.7.2 y revisar los 871 casos RF/CNN con trazabilidad de etiqueta, máscara, fuente, grupo y decisión; no usar test para seleccionar modelos.
+7. Resolver o documentar la limitación de `regular` ligada a AgriFreshNET y las máscaras pendientes de mango. Si se cambia cualquier dato o pipeline, actualizar los experimentos afectados y medir de nuevo solo en validation.
+8. Congelar manifiesto, split, versiones y checkpoints con hashes; abrir test una sola vez después de cerrar revisión y selección.
+9. Completar interfaz Streamlit y la entrega IEEE, referencias, evidencia CRISP-DM, anexos de PI1/PI2/PI3 y video.
 
 ## 7. Punto de partida para próximas sesiones
 
-Tomar este archivo como mapa, pero comprobar el estado de Git y los datos generados al iniciar cada sesión. La documentación principal de decisiones está en [CRISP-DM](crisp-dm.md), [criterios de calidad](criterios-calidad.md) y [revisión de anotaciones](revision-anotaciones.md). La siguiente etapa lógica es cerrar calidad/anotación y auditoría completa de recortes antes de producir las particiones finales y entrenar. No asumir que el proyecto guía, el README o un manifiesto local ignorado por Git demuestran resultados reproducibles del estado remoto.
+Tomar este archivo como mapa, pero comprobar el estado de Git y los datos generados al iniciar cada sesión. La documentación principal de decisiones está en [CRISP-DM](crisp-dm.md), [criterios de calidad](criterios-calidad.md), [revisión de anotaciones](revision-anotaciones.md) y [guía para el equipo](modeling_team_guide.md). Siguientes pasos: alinear scikit-learn a 1.7.2 y repetir el audit de validation; revisar visualmente los 871 casos RF/CNN; resolver o documentar las cuatro máscaras de mango y la cobertura monofuente de `regular`; congelar datos, split y checkpoints; ejecutar test una sola vez; terminar app, informe y sustentación. Los cambios de modelado y documentación de esta sesión son locales y requieren revisión/commit del equipo antes de compartirlos en GitHub.
