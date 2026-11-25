@@ -10,7 +10,7 @@ Scripts y salidas: [experiments/diagnostics/](../experiments/diagnostics/README.
 
 | Frente | Estado | Evidencia principal | Siguiente paso | Requiere acuerdo |
 |---|---|---|---|---|
-| Fix CNN | **E3b candidata** (E1 aceptado, E2 rechazado, E3a detenida por costo) | Baseline v2 0.748 → E1 0.797 → **E3b (4 bloques) 0.8575** (Δ frente a E1 +0.060, IC [+0.036, +0.084]). Empata con el RF (Δ +0.001, IC [−0.027, +0.028]) con menos `bad→good` (90 frente a 121) y recall de bad 0.916. Hay señal de sobreajuste (loss train 0.095 frente a val 0.334), contenida por EarlyStopping. | Fijar el criterio de elección entre RF, CNN o ensamble antes de test; como mucho, una variante con regularización | Sí (equipo) |
+| Fix CNN | **E3b candidata** (E1 aceptado, E2 rechazado, E3a detenida por costo) | Baseline v2 0.748 → E1 0.797 → **E3b (4 bloques) 0.8575** (Δ frente a E1 +0.060, IC [+0.036, +0.084]). Empata con el RF (Δ +0.001, IC [−0.027, +0.028]) con menos `bad→good` (90 frente a 121) y recall de bad 0.916. Hay señal de sobreajuste (loss train 0.095 frente a val 0.334), contenida por EarlyStopping. | Ensamble 0,5/0,5 probado: val 0.875, `bad→good` 79 (Δ frente al RF +0.018 [−0.004, +0.042]; frente a la CNN +0.018 [+0.008, +0.028]). Elegir RF, CNN o ensamble antes de test | Sí (equipo, incluida la GUI) |
 | Fix Random Forest | Candidato elegido por CV agrupada sobre v2 | Base v2: CV 0.810, val 0.840. Rejilla de 30 configuraciones; elegida leaf=5, depth=20, `max_features`=0.1: CV 0.816, val 0.857 (Δ +0.017, IC [+0.005, +0.028]), F1 regular 0.783, `bad→good` 121. La brecha train–CV sigue en ~0.18. | Variante LBP uniform (opcional); fijar el candidato antes del freeze | No |
 | `regular` solo en AgriFreshNET | Confusor confirmado. El atajo no está demostrado. | El 100% de `regular` no propio es de AgriFreshNET. La sonda de fuente alcanza 0.976 de balanced accuracy. La transferencia entre dominios cae de AUC 0.98 a 0.72. | Reportar las métricas por fuente y conseguir `regular` de otra fuente | Recolección de datos |
 | Pocas fotos propias en validation | Confirmado, con corrección parcial a la auditoría | Validation: 1 recorte (1 grupo). Test: 4 recortes en 3 grupos (la auditoría decía 0). Train: 32 recortes en 4 grupos. | Protocolo de recolección (abajo) | Recolección de datos |
@@ -201,6 +201,30 @@ Duró 28 min y la mejor época fue la 48 de 60.
   - *Sesgo de selección:* entre las CNN se eligió por validation (E1, E2 y E3b son tres comparaciones), así que 0.8575 es algo optimista. Cualquier variante nueva aumenta ese sesgo. Para limitarlo, se propone cerrar la búsqueda de CNN con a lo sumo una variante más.
 
   **Decisión.** **E3b pasa a ser la CNN candidata**: empata con el RF en F1 macro y comete un 26% menos de errores `bad→good` (90 frente a 121), con recall de `bad` 0.916. RF y CNN quedan como candidatos finales; el criterio de desempate acordado con el equipo (por ejemplo, `bad→good` o un ensamble) debe fijarse **antes** de abrir test.
+
+## Ensamble RF + CNN E3b (validation v2, 24-nov-2026)
+
+**Regla fijada antes de ver resultados:** voto suave con pesos iguales, p = 0,5·p_RF + 0,5·p_CNN, y la clase predicha es el argmax. No se ajustó nada en validation. Script: `experiments/diagnostics/eval_ensemble_v2.py`; salida en `out/ensemble_rf_cnn_e3b.txt` y `experiments/results/ensemble_rf_v2_burst_grid_cnn_v2_burst_e3b.json`.
+
+| Modelo | F1 macro val | Recall bad | `bad→good` | F1 regular | `regular→good` | Kaggle | AgriFreshNET |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| RF v2_burst_grid | 0.8569 | 0.897 | 121 | 0.783 | 122 | 0.954 | 0.799 |
+| CNN v2 E3b | 0.8575 | 0.916 | 90 | 0.776 | 128 | 0.938 | 0.823 |
+| **Ensamble 0,5/0,5** | **0.8751** | **0.926** | **79** | **0.799** | **115** | 0.949 | **0.843** |
+
+Δ pareados con bootstrap de grupos (IC 95%):
+- Ensamble − RF: global +0.018 [−0.004, +0.042], que **no es significativo**; AgriFreshNET +0.044 [+0.012, +0.077]; Kaggle −0.005 [−0.027, +0.015].
+- Ensamble − CNN: global +0.018 [+0.008, +0.028]; Kaggle +0.011 [+0.001, +0.025]; AgriFreshNET +0.020 [+0.009, +0.033]. Es significativo en los tres cortes.
+
+Los modelos coinciden en el 84,3% de las fotos, y ahí la accuracy es 0.951. En las 594 fotos donde discrepan, el ensamble acierta el 58,4%, frente al 46,5% del RF y el 48,1% de la CNN.
+
+**Sensibilidad al peso de la CNN (solo descriptiva; no se usa para elegir):** con w = 0 / 0,1 / 0,2 / 0,3 / 0,5 / 0,7 / 1, el F1 es 0.857 / 0.877 / 0.885 / 0.883 / 0.875 / 0.866 / 0.858 y `bad→good` es 121 / 96 / 87 / 76 / 79 / 85 / 90. Todos los pesos intermedios superan a cada modelo por separado. Que el máximo esté con menos peso para la CNN es compatible con que sus probabilidades sean más extremas que las del RF: el peso nominal no equivale a la influencia real de cada modelo. Elegir w = 0,2 con esta curva sería seleccionar sobre validation; si se quiere ajustar el peso, hay que hacerlo con predicciones fuera de fold en train (CV agrupada) o calibrando antes de combinar.
+
+**Interpretación.** El ensamble mejora todos los indicadores de riesgo a la vez: el menor número de `bad→good` (79), el mayor recall de `bad` (0.926) y el menor número de `regular→good` (115). Eso es coherente con errores poco correlacionados (Jaccard 0.25). Frente a la CNN la ganancia es significativa; frente al RF es probable, pero el IC global incluye el 0. La mejora se concentra en AgriFreshNET, y en Kaggle no hay diferencia.
+
+**Costo para la app (equipo de GUI).** Hay que ejecutar segmentación, extracción de atributos y RF, más la CNN, por cada foto, y ambos checkpoints deben viajar juntos. Esto cambia el contrato de inferencia y hay que acordarlo con ese equipo.
+
+**Decisión pendiente del equipo, antes de test:** elegir el modelo final entre (a) RF solo, (b) CNN E3b sola o (c) ensamble 0,5/0,5 fijo. Con la evidencia de validation, (c) es la opción con mejor F1 y menos errores caros. Si se elige (c), el peso queda fijo en 0,5 y no se ajusta después.
 
 ## Frente 2. Random Forest
 

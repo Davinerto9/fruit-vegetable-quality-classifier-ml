@@ -23,6 +23,7 @@ PYTHONPATH=. python experiments/diagnostics/data_audit.py
 | `eval_cnn_vs_rf_v2.py` | CNN v2 vs RF v2 en val v2 (mismas filas): fuente, producto, Δ pareado | `experiments/results/cnn_vs_rf_*.json`, `out/cnn_vs_rf_*.txt` |
 | `paired_cnn_runs.py` | Δ F1 pareado entre dos corridas CNN sobre val v2 | `out/paired_cnn_*.txt` |
 | `check_cnn_augment.py` | `--augment`: simetrías exactas, etiquetas conservadas, reproducible, varía entre épocas | `out/check_cnn_augment.txt` |
+| `eval_ensemble_v2.py` | ensamble RF + CNN (voto suave 0,5/0,5 fijo) en val v2; curva por peso solo descriptiva | `out/ensemble_rf_cnn_e3b.txt` |
 | `cv_burst.py` | CV agrupada en train con grupos por archivo vs por ráfaga | consola |
 | `crop_stats.py` | brillo, contraste, saturación, nitidez, fondo, md5, dHash por recorte | `out/crop_stats.csv` (no versionado, ~11 MB) |
 | `pred_an.py` | predicciones `regular` por fuente, `bad→good`, errores por producto, duplicados | consola |

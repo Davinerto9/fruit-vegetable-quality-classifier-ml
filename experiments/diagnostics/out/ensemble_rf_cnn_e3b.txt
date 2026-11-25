@@ -1,0 +1,11 @@
+rf            f1_macro=0.8569 f1_regular=0.7834 recall_bad=0.8974 bad_to_good=121 regular_to_good=122 n=3795 | Kaggle=0.9535 Agri=0.7994
+cnn           f1_macro=0.8575 f1_regular=0.7759 recall_bad=0.9163 bad_to_good=90 regular_to_good=128 n=3795 | Kaggle=0.9376 Agri=0.8228
+ensemble_0.5  f1_macro=0.8751 f1_regular=0.7994 recall_bad=0.9263 bad_to_good=79 regular_to_good=115 n=3795 | Kaggle=0.9490 Agri=0.8432
+Δ(ensamble − rf) global       +0.0182 IC95=[-0.0043, +0.0415]
+Δ(ensamble − rf) ryandpark    -0.0045 IC95=[-0.0265, +0.0148]
+Δ(ensamble − rf) agrifreshnet +0.0438 IC95=[+0.0116, +0.0770]
+Δ(ensamble − cnn) global       +0.0176 IC95=[+0.0081, +0.0280]
+Δ(ensamble − cnn) ryandpark    +0.0113 IC95=[+0.0011, +0.0248]
+Δ(ensamble − cnn) agrifreshnet +0.0204 IC95=[+0.0090, +0.0334]
+curva descriptiva w_CNN -> F1 / bad->good: 0.0:0.857/121 0.1:0.877/96 0.2:0.885/87 0.3:0.883/76 0.4:0.881/76 0.5:0.875/79 0.6:0.870/85 0.7:0.866/85 0.8:0.862/86 0.9:0.860/88 1.0:0.858/90
+acuerdo RF-CNN: 0.843; accuracy cuando acuerdan 0.951, cuando no: ensamble 0.584 (RF 0.465, CNN 0.481, n=594)
