@@ -1,4 +1,20 @@
-"""Audita checkpoints en validation; permite una evaluación final protegida en test."""
+"""
+Audita checkpoints en validation; permite una evaluación final protegida en test.
+
+Por defecto evalúa los candidatos del split v2 por ráfagas (logística, SVM, RF de rejilla,
+CNN E3b y el ensamble RF + CNN con el peso fijo de config.APP_ENSEMBLE_CNN_WEIGHT).
+
+Uso:
+    python -m src.evaluation.model_audit                         # validation v2
+    python -m src.evaluation.model_audit --partition test --confirm-final-test
+
+Protecciones del acceso a test (se abre una sola vez):
+1. Exige --confirm-final-test y experiments/results/pretest_freeze.sha256.
+2. Verifica los hashes del freeze y exige que el split y todos los checkpoints que se van a
+   evaluar figuren en él, para no evaluar en test modelos distintos de los congelados.
+3. Carga y valida todos los modelos ANTES de crear test_evaluation.lock: un checkpoint
+   faltante no consume la única evaluación de test.
+"""
 
 import argparse
 import csv
@@ -45,6 +61,42 @@ def _verify_freeze(freeze_path: Path) -> None:
         actual_hash = _digest(path)
         if actual_hash != expected_hash:
             raise RuntimeError(f"Cambió un artefacto congelado: {relative_path}")
+
+
+def _require_frozen(freeze_path: Path, paths: list[Path]) -> None:
+    """Exige que cada archivo de paths esté listado en el freeze (por ruta relativa a ROOT)."""
+    listed = set()
+    for line in freeze_path.read_text(encoding="utf-8").splitlines():
+        if line.strip():
+            listed.add(line.split(maxsplit=1)[1].lstrip("*").strip().replace("\\", "/"))
+    missing = []
+    for path in paths:
+        try:
+            relative = Path(path).resolve().relative_to(config.ROOT.resolve()).as_posix()
+        except ValueError:
+            relative = str(path)
+        if relative not in listed:
+            missing.append(relative)
+    if missing:
+        raise RuntimeError("Estos artefactos no están en el freeze y no se evaluarán en test: "
+                           + ", ".join(missing))
+
+
+def ensemble_probabilities(p_rf: np.ndarray, rf_classes, p_cnn: np.ndarray,
+                           cnn_weight: float) -> np.ndarray:
+    """
+    Voto suave (1 - w) * p_RF + w * p_CNN, con columnas en el orden de config.QUALITY_CLASSES.
+
+    scikit-learn ordena classes_ alfabéticamente; se reordena antes de combinar, igual que en
+    experiments/diagnostics/eval_ensemble_v2.py.
+    """
+    order = [list(rf_classes).index(label) for label in config.QUALITY_CLASSES]
+    return (1 - cnn_weight) * p_rf[:, order] + cnn_weight * p_cnn
+
+
+def _classic(path: Path):
+    saved = joblib.load(path)
+    return saved.get("model", saved.get("pipeline")) if isinstance(saved, dict) else saved
 
 
 def _acquire_test_lock(lock_path: Path) -> None:
@@ -160,7 +212,16 @@ def _class_source_support(rows):
     return output
 
 
-def run(partition: str, split_path: Path, batch_size: int, confirm_final_test: bool):
+def run(partition: str, split_path: Path, batch_size: int, confirm_final_test: bool,
+        checkpoints: dict[str, Path], cnn_weight: float, tag: str):
+    """
+    Evalúa los checkpoints en la partición indicada y escribe <stem>_<tag>_*.
+
+    Parámetros:
+        checkpoints: rutas con claves logistic_regression, svm_linear, random_forest y cnn_rgb.
+        cnn_weight: peso de la CNN en el ensamble (fijado antes de evaluar).
+        tag: sufijo de las salidas, para no sobrescribir las auditorías de otros splits.
+    """
     is_test = partition == "test"
     freeze_path = config.RESULTS / "pretest_freeze.sha256"
     lock_path = config.RESULTS / "test_evaluation.lock"
@@ -168,6 +229,22 @@ def run(partition: str, split_path: Path, batch_size: int, confirm_final_test: b
         if not confirm_final_test:
             raise ValueError("Test requiere --confirm-final-test después del freeze.")
         _verify_freeze(freeze_path)
+        _require_frozen(freeze_path, [split_path, *checkpoints.values()])
+
+    missing_checkpoints = [str(path) for path in checkpoints.values() if not path.is_file()]
+    if missing_checkpoints:
+        raise FileNotFoundError("Faltan checkpoints: " + ", ".join(missing_checkpoints))
+    try:
+        import tensorflow as tf
+    except ImportError as error:
+        raise RuntimeError("La CNN requiere TensorFlow en el entorno activo.") from error
+    logistic = _classic(checkpoints["logistic_regression"])
+    svm = _classic(checkpoints["svm_linear"])
+    random_forest = _classic(checkpoints["random_forest"])
+    cnn = tf.keras.models.load_model(checkpoints["cnn_rgb"], compile=False)
+
+    # Todo lo que puede fallar ya se cargó: recién ahora se consume el acceso a test.
+    if is_test:
         _acquire_test_lock(lock_path)
 
     rows = _read_partition(split_path, partition)
@@ -189,26 +266,18 @@ def run(partition: str, split_path: Path, batch_size: int, confirm_final_test: b
     if X.shape[1] != len(FEATURE_NAMES):
         raise ValueError(f"Esperaba {len(FEATURE_NAMES)} atributos y obtuve {X.shape[1]}.")
 
-    checkpoints = config.CHECKPOINTS
-    logistic = joblib.load(checkpoints / "logistic_baseline.joblib")["pipeline"]
-    svm = joblib.load(checkpoints / "svm.joblib")["model"]
-    random_forest = joblib.load(checkpoints / "random_forest.joblib")["model"]
+    labels = np.asarray(config.QUALITY_CLASSES)
+    p_rf = random_forest.predict_proba(X)
+    class_to_id = {label: index for index, label in enumerate(config.QUALITY_CLASSES)}
+    p_cnn = cnn.predict(_dataset(tf, rows, class_to_id, batch_size), verbose=1)
+    p_ensemble = ensemble_probabilities(p_rf, random_forest.classes_, p_cnn, cnn_weight)
     predictions = {
         "logistic_regression": logistic.predict(X).astype(str),
         "svm_linear": svm.predict(X).astype(str),
-        "random_forest": random_forest.predict(X).astype(str),
+        "random_forest": np.asarray(random_forest.classes_)[p_rf.argmax(axis=1)].astype(str),
+        "cnn_rgb": labels[p_cnn.argmax(axis=1)],
+        "ensemble": labels[p_ensemble.argmax(axis=1)],
     }
-
-    try:
-        import tensorflow as tf
-    except ImportError as error:
-        raise RuntimeError("La CNN requiere TensorFlow en el entorno activo.") from error
-    class_to_id = {label: index for index, label in enumerate(config.QUALITY_CLASSES)}
-    cnn = tf.keras.models.load_model(checkpoints / "cnn_rgb.keras", compile=False)
-    probabilities = cnn.predict(
-        _dataset(tf, rows, class_to_id, batch_size), verbose=1,
-    )
-    predictions["cnn_rgb"] = np.asarray(config.QUALITY_CLASSES)[probabilities.argmax(axis=1)]
 
     metrics = {}
     for name, prediction in predictions.items():
@@ -250,7 +319,7 @@ def run(partition: str, split_path: Path, batch_size: int, confirm_final_test: b
             error_cases.append(record)
 
     config.RESULTS.mkdir(parents=True, exist_ok=True)
-    stem = "validation" if partition == "val" else "final_test"
+    stem = ("validation" if partition == "val" else "final_test") + (f"_{tag}" if tag else "")
     prediction_path = config.RESULTS / f"{stem}_predictions.csv"
     errors_path = config.RESULTS / f"{stem}_error_cases.csv"
     result_path = config.RESULTS / f"{stem}_audit.json"
@@ -284,6 +353,11 @@ def run(partition: str, split_path: Path, batch_size: int, confirm_final_test: b
         "predictions_csv": str(prediction_path),
         "error_cases_csv": str(errors_path),
         "test_lock": str(lock_path) if is_test else None,
+        "split_file": str(split_path),
+        "split_sha256": _digest(split_path),
+        "checkpoints": {name: {"path": str(path), "sha256": _digest(path)}
+                        for name, path in checkpoints.items()},
+        "ensemble_cnn_weight": cnn_weight,
     }
     result_path.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n",
                            encoding="utf-8")
@@ -299,10 +373,22 @@ def run(partition: str, split_path: Path, batch_size: int, confirm_final_test: b
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description=__doc__,
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--partition", choices=("val", "test"), default="val")
-    parser.add_argument("--split", type=Path, default=config.CROPS_DIR / "splits.csv")
+    parser.add_argument("--split", type=Path, default=config.CROPS_DIR / "splits_v2_burst.csv")
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--confirm-final-test", action="store_true")
+    parser.add_argument("--logistic", type=Path,
+                        default=config.CHECKPOINTS / "logistic_baseline_v2_burst.joblib")
+    parser.add_argument("--svm", type=Path, default=config.CHECKPOINTS / "svm_v2_burst.joblib")
+    parser.add_argument("--rf", type=Path, default=config.CHECKPOINTS / config.APP_RF_CHECKPOINT)
+    parser.add_argument("--cnn", type=Path, default=config.CHECKPOINTS / config.APP_CNN_CHECKPOINT)
+    parser.add_argument("--cnn-weight", type=float, default=config.APP_ENSEMBLE_CNN_WEIGHT,
+                        help="Peso de la CNN en el ensamble; fijarlo antes de evaluar.")
+    parser.add_argument("--tag", default="v2_burst", help="Sufijo de los archivos de salida.")
     args = parser.parse_args()
-    run(args.partition, args.split, args.batch_size, args.confirm_final_test)
+    run(args.partition, args.split, args.batch_size, args.confirm_final_test,
+        {"logistic_regression": args.logistic, "svm_linear": args.svm,
+         "random_forest": args.rf, "cnn_rgb": args.cnn},
+        args.cnn_weight, args.tag)
