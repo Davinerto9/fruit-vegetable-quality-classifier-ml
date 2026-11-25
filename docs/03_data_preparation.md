@@ -27,7 +27,7 @@ Los recortes se llevan a **128 × 128 píxeles**. La máscara debe conservar ali
 
 ## Medida relativa de tamaño
 
-Con el área \(A\) de la máscara en la imagen original, se calcula el diámetro equivalente \(d=2\sqrt{A/\pi}\) y luego \(d_n=d/\max(H,W)\), donde \(H,W\) son la altura y el ancho originales. \(d_n\) mide ocupación relativa de la fotografía, no tamaño real. Los umbrales de small, medium y large son provisionales. No se deben presentar como categorías validadas: el conjunto propio tiene 34 medianas y dos pequeñas, sin ejemplos grandes, y las condiciones de captura varían.
+Con el área \(A\) de la máscara en la imagen original, se calcula el diámetro equivalente \(d=2\sqrt{A/\pi}\) y luego \(d_n=d/\max(H,W)\), donde \(H,W\) son la altura y el ancho originales. \(d_n\) mide ocupación relativa de la fotografía, no tamaño real. Los umbrales vigentes (`small` < 0,33 ≤ `medium` < 0,55 ≤ `large`) se calibraron con las 35 fotos propias de una pieza con tamaño anotado y coinciden con 34 (97%). Siguen siendo umbrales de un protocolo de captura, no categorías validadas: solo hay dos ejemplos pequeños y ninguno grande. La justificación está en los [fundamentos matemáticos, §4](supporting_docs/mathematical_and_theoretical_foundations.md#4-tamaño).
 
 ## Integración y organización por grupos
 
@@ -35,7 +35,26 @@ Las fuentes se normalizan a las clases good, regular y bad, conservando proceden
 
 ## Partición y prevención de fuga
 
-El split final busca proporciones aproximadas de 70/15/15 para entrenamiento, validación y prueba, con semilla 42. Cada grupo se asigna completo a una sola partición. Se verifican intersecciones, cobertura por calidad, fuente y producto, exclusiones y distribución obtenida. La validación cruzada también debe respetar grupos. Cualquier escalado, selección de atributos, cálculo de pesos de clase y aumento de datos se ajusta exclusivamente con entrenamiento.
+El split busca proporciones aproximadas de 70/15/15 para entrenamiento, validación y prueba, con semilla 42. Cada grupo se asigna completo a una sola partición. Se verifican intersecciones, cobertura por calidad, fuente y producto, exclusiones y distribución obtenida. La validación cruzada también respeta grupos. Cualquier escalado, selección de atributos, cálculo de pesos de clase y aumento de datos se ajusta exclusivamente con entrenamiento.
+
+### Fuga detectada en el split v1 y split v2 vigente
+
+El split v1 (`splits.csv`) tenía grupos disjuntos, pero los grupos de Kaggle eran **uno por archivo** y no uno por ráfaga de captura. El manifiesto se había generado desde un `index.csv` anterior al agrupamiento por ráfagas. Como resultado, 645 de 746 ráfagas quedaron repartidas entre particiones, y el 99% de los recortes de Kaggle en validation compartía ráfaga con train. Medido con CV agrupada, el F1 de Kaggle estaba inflado en unos 3,5 puntos (0,968 frente a 0,932).
+
+`python -m src.data.split_v2` genera `crops/splits_v2_burst.csv` (sha256 `b0ac08f5…`). Usa los mismos recortes, las mismas exclusiones y el mismo `assign_groups`, pero con los grupos por ráfaga de `index.csv`. No modifica `splits.csv` ni el manifiesto.
+
+| | v1 | **v2 (vigente)** |
+| --- | ---: | ---: |
+| Recortes | 23.687 | 23.543 |
+| Grupos | 13.192 | 5.677 |
+| train / val / test (recortes) | 16.456 / 3.557 / 3.674 | 16.272 / 3.795 / 3.476 |
+| Ráfagas de Kaggle repartidas | 645 | 0 |
+| Grupos en validation | 1.979 | 852 (125 de Kaggle) |
+| Fotos propias en val / test | 1 / 4 | 4 / 1 |
+
+Todos los modelos vigentes se entrenaron sobre v2. Detalle y comprobaciones: [seguimiento de modelado, F0](modeling_fronts_tracking.md#f0-fuga-por-ráfagas-de-kaggle-hallazgo-nuevo-bloqueante).
+
+**Riesgo abierto.** Muchos archivos de AgriFreshNET también tienen fecha y hora en el nombre (`IMG_AAAAMMDD_HHMM…`). En validation v2, 1.582 de sus 1.916 recortes las tienen, repartidos en 376 minutos con hasta 51 fotos por minuto, y 141 de esos minutos quedan divididos en varios grupos. Antes de congelar hay que repetir la prueba de CV agrupando por minuto.
 
 ## Artefactos y estado
 
@@ -43,10 +62,12 @@ El split final busca proporciones aproximadas de 70/15/15 para entrenamiento, va
 - data/processed/crops/manifest.csv: manifiesto completo con estado y motivo por registro.
 - data/processed/pilot-crops/manifest.csv: piloto de 151 filas (105 candidatas, 37 por revisar y nueve excluidas).
 - data/processed/pilot-crops/splits.csv: piloto de 98 recortes en 70 grupos (77 train, 10 val y 11 test), sin grupos compartidos y con las tres clases.
-- Código relacionado: [inventario](../src/data/inventory.py), [segmentación](../src/data/segmentation.py), [preparación](../src/data/prepare.py) y [partición](../src/data/split.py).
+- data/processed/crops/splits.csv: split v1, conservado solo para comparar (tiene la fuga por ráfagas).
+- data/processed/crops/splits_v2_burst.csv: split vigente.
+- Código relacionado: [inventario](../src/data/inventory.py), [segmentación](../src/data/segmentation.py), [preparación](../src/data/prepare.py), [partición](../src/data/split.py) y [split v2](../src/data/split_v2.py).
 
-**Pendiente:** completar la revisión visual de candidatos fuera de la muestra estratificada y resolver las máscaras de cuatro mangos. El grupo de mango con dos candidatos quedó completo en train; no hay soporte de mango en validación ni prueba, así que no se reportarán métricas para ese producto. La partición completa ya está generada y verificada estructuralmente; no sustituirla por el split piloto.
+**Pendiente:** completar la revisión visual de candidatos fuera de la muestra estratificada y resolver las máscaras de cuatro mangos. El grupo de mango con dos candidatos quedó completo en train; no hay soporte de mango en validación ni prueba, así que no se reportarán métricas para ese producto. Usar el split v2 para todo entrenamiento y evaluación; v1 y el piloto quedan solo como diagnóstico.
 
 ## Conclusión de la fase
 
-El pipeline de preparación generó el manifiesto y la partición completa por grupos; la separación se verificó sin grupos compartidos y con archivos/máscaras presentes. La auditoría visual fue estratificada, no individual para todos los candidatos, y cuatro fotos de mango siguen en revisión de segmentación. El modelado inicial puede comenzar con los candidatos aceptados, dejando documentado que los resultados son provisionales hasta completar esa revisión.
+El pipeline de preparación generó el manifiesto y la partición por grupos. La primera versión tenía una fuga por ráfagas en Kaggle, corregida en el split v2, que no tiene ninguna ráfaga repartida. Queda por comprobar el agrupamiento por fecha y hora en AgriFreshNET. La auditoría visual fue estratificada, no individual para todos los candidatos, y cuatro fotos de mango siguen en revisión de segmentación. El modelado inicial puede comenzar con los candidatos aceptados, dejando documentado que los resultados son provisionales hasta completar esa revisión.

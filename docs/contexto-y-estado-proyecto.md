@@ -1,10 +1,12 @@
 # Contexto y estado del proyecto
 
-**Revisión:** 21 de noviembre de 2026  
+**Revisión:** 21 de noviembre de 2026, con una actualización el 25 de noviembre (abajo)  
 **Repositorio activo:** `Davinerto9/fruit-vegetable-quality-classifier-ml`  
 **Último commit confirmado:** `main`, en `1d33148` (`data: finalize annotations and group-safe split workflow`). El modelado descrito abajo corresponde a cambios locales posteriores a ese commit.
 
 Este archivo conserva el contexto para continuar el proyecto sin confundir la entrega actual con la referencia del semestre anterior. Las rutas, conteos y estados de datos aquí descritos corresponden a la copia local revisada en la fecha indicada; los archivos generados dentro de `data/processed/` están ignorados por Git y pueden cambiar al regenerarlos.
+
+> **Actualización del 25 de noviembre de 2026.** Las cifras de modelado de este archivo (RF 0,842, CNN 0,799, split de 23.687 filas) corresponden al split v1, que tenía una fuga por ráfagas en Kaggle. Lo vigente está en [modelado](04_modeling.md), [evaluación](05_evaluation.md) y en el [seguimiento de los cinco frentes](modeling_fronts_tracking.md): split v2 por ráfagas, RF de rejilla con 0,857, CNN E3b con 0,858 y ensamble con 0,875 en validation v2. La app Streamlit ya está implementada. Pendientes inmediatos: probar las ráfagas de AgriFreshNET, fijar el modelo final, hacer el freeze, abrir test una vez, recolectar las fotos propias externas, y luego figuras, informe y video.
 
 ## 1. Qué pide la entrega 2026-2
 

@@ -14,9 +14,11 @@ streamlit run src/app/app.py
 
 | Archivo | Necesario para | Cómo se obtiene |
 | --- | --- | --- |
-| `experiments/checkpoints/random_forest.joblib` | Clasificación (modelo principal) | `python -m src.training.classical_models` |
-| `experiments/checkpoints/cnn_rgb.keras` | Comparación opcional con la CNN | `python -m src.training.train_cnn` |
-| `experiments/results/*.json` | Mostrar el F1 de validation de cada modelo | Se generan al entrenar |
+| `experiments/checkpoints/random_forest_v2_burst_grid.joblib` | Random Forest (siempre) | `python -m src.training.rf_grid` (ver [modelado](04_modeling.md#reproducibilidad)) |
+| `experiments/checkpoints/cnn_rgb_v2_burst_e3b.keras` | CNN y ensamble | `python -m src.training.train_cnn --run-name v2_burst_e3b …` |
+| `experiments/results/*_v2_burst*.json` | Mostrar el F1 de validation de cada modelo y del ensamble | Se generan al entrenar y al evaluar el ensamble |
+
+Los nombres se configuran en `src/config.py` (`APP_RF_CHECKPOINT`, `APP_CNN_CHECKPOINT`). `APP_MODEL` decide quién da la clase: `"ensemble"` (por defecto), `"random_forest"` o `"cnn"`. Si el modelo pedido no está disponible (por ejemplo, sin TensorFlow), la app usa el otro y lo avisa en pantalla.
 
 Los checkpoints no están en Git por tamaño: cada integrante debe tenerlos localmente. La app avisa si falta alguno o si la versión de scikit-learn instalada no es la 1.7.2 con la que se guardaron.
 
@@ -37,13 +39,16 @@ Una prueba (`tests/test_inference.py`) verifica que los atributos calculados en 
 2. `segmentation.process()` estima el fondo, segmenta la pieza y cuenta las frutas.
 3. Si la foto está en escala de grises, tiene varias piezas o la máscara es dudosa, la app **no clasifica**: explica el motivo y pide otra foto.
 4. `segmentation.model_inputs()` produce el recorte y la máscara de 128×128.
-5. Random Forest recibe los 359 atributos; la CNN (opcional) recibe el recorte con el fondo anulado.
-6. La interfaz muestra la clase, las probabilidades, el contorno detectado, lo que recibe el modelo, la categoría de tamaño y $d_n$.
-7. Si la probabilidad máxima es menor que `config.APP_MIN_CONFIDENCE` (0,55, provisional), o si RF y la CNN no coinciden, pide revisión manual.
+5. Random Forest recibe los 359 atributos; la CNN recibe el recorte con el fondo anulado.
+6. Con `APP_MODEL = "ensemble"`, la clase es el argmax de $0{,}5\,p_\text{RF}+0{,}5\,p_\text{CNN}$, el mismo voto evaluado en validation (F1 0,875). Las clases de RF se reordenan antes de sumar.
+7. La interfaz muestra la clase, las probabilidades, el contorno detectado, lo que recibe el modelo, la categoría de tamaño, $d_n$ y la predicción de cada modelo por separado.
+8. Si la probabilidad máxima es menor que `config.APP_MIN_CONFIDENCE` (0,55, provisional), o si RF y la CNN no coinciden, pide revisión manual.
 
 ## Decisiones de diseño
 
-- **Random Forest como modelo principal:** mayor F1 macro en validation (0,842). La CNN se ofrece como comparación porque comete menos errores `bad→good` (6,2% frente a 7,9%).
+- **Ensamble como opción por defecto:** RF y la CNN E3b empatan en F1 (0,857 y 0,858), y el ensamble reduce los errores `bad→good` de 121 a 79. La elección final es del equipo antes de abrir test; la app solo cambia `APP_MODEL`.
+- **Costo del ensamble:** TensorFlow pasa a ser obligatorio para la decisión por defecto, y cada foto ejecuta los dos modelos. Sin TensorFlow la app sigue funcionando con RF.
+- **Aviso de dominio:** la pantalla indica que el desempeño con fotos de celular no está medido. En validation v2, RF y la CNN fallan 3 de las 4 fotos propias.
 - **Rechazar antes que adivinar:** una foto con varias piezas o con mala segmentación produciría atributos sin sentido; la app lo dice en lugar de mostrar una clase con falsa seguridad.
 - **Lógica separada de la interfaz:** `inference.py` se prueba con pytest y se puede reutilizar en una simulación de línea de empaque.
 - **Sin almacenamiento:** las fotos se procesan en memoria y no se escriben en disco.
@@ -63,4 +68,4 @@ Si se recopilan nuevas imágenes, se revisa su distribución por calidad, produc
 
 ## Estado
 
-Interfaz implementada y probada con imágenes sintéticas y fotos propias (segmentación y rechazo). Falta la demostración con los checkpoints reales y las pruebas de uso de la lista anterior. El cierre de la entrega incluirá el informe IEEE de máximo siete páginas, un video de hasta diez minutos y las referencias realmente utilizadas.
+Interfaz implementada y probada con imágenes sintéticas, fotos propias (segmentación y rechazo) y un modelo de prueba; 45 pruebas automáticas pasan. Falta abrirla en el navegador con los checkpoints v2 reales y completar las pruebas de uso de la lista anterior. El cierre de la entrega incluirá el informe IEEE de máximo siete páginas, un video de hasta diez minutos y las referencias realmente utilizadas.

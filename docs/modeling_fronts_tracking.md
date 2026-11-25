@@ -195,7 +195,7 @@ Duró 28 min y la mejor época fue la 48 de 60.
   - Por pareja: ambos aciertan 3.045; solo falla RF en 286; solo falla la CNN en 276; ambos fallan en 188. Los errores se solapan poco (Jaccard 0.25), así que un ensamble podría ayudar.
 
   **Interpretación.**
-  - *Comprobado:* la limitación de E1 era de capacidad. Con un cuarto bloque, el campo receptivo llega a 8×8 antes del pooling global y `val_loss` baja de 0.41 a 0.33.
+  - *Comprobado:* la limitación de E1 era de capacidad. Con un cuarto bloque, el mapa que llega al pooling global es de 8×8 y el campo receptivo pasa de 22×22 a 46×46 px (36% del recorte) y `val_loss` baja de 0.41 a 0.33.
   - *Nuevo riesgo:* **ahora sí hay señal de sobreajuste estadístico.** Desde la época 30, la pérdida de train sigue bajando (0.12 → 0.08) mientras `val_loss` oscila entre 0.33 y 0.50 sin mejorar, y la brecha de loss en la mejor época es 0.095 frente a 0.334. EarlyStopping con `restore_best_weights` lo contiene.
   - Para E3b, la regularización (más dropout o L2) y la augmentation vuelven a ser hipótesis razonables. El rechazo de E2 se midió sobre un modelo que no sobreajustaba y no se traslada automáticamente a E3b.
   - *Sesgo de selección:* entre las CNN se eligió por validation (E1, E2 y E3b son tres comparaciones), así que 0.8575 es algo optimista. Cualquier variante nueva aumenta ese sesgo. Para limitarlo, se propone cerrar la búsqueda de CNN con a lo sumo una variante más.

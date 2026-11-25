@@ -20,7 +20,7 @@ A partir de una foto de **una** fruta o verdura sobre fondo uniforme, el sistema
 - **Calidad:** buena (`good`), regular (`regular`) o mala (`bad`), según los [criterios de anotación](docs/criterios-calidad.md).
 - **Tamaño:** pequeño, mediano o grande, además de un diámetro normalizado.
 
-Seguimos la metodología **CRISP-DM**. El modelado entrenó regresión logística, SVM lineal y Random Forest sobre atributos clásicos, además de una CNN RGB. Los resultados de validation son preliminares y el conjunto test sigue reservado. La aplicación de **Streamlit** permite cargar una foto o tomarla con la cámara y muestra la calidad, las probabilidades y el tamaño relativo; consulta [Despliegue](docs/06_deployment.md). Consulta la [guía de modelado y auditoría](docs/modeling_team_guide.md) antes de reproducir resultados.
+Seguimos la metodología **CRISP-DM**. Sobre el split v2 por ráfagas, los candidatos son Random Forest (F1 macro en validation 0,857), una CNN de 4 bloques (0,858) y su ensamble 0,5/0,5 (0,875, con menos errores `bad→good`); la regresión logística y la SVM lineal quedan como líneas base. El conjunto test sigue reservado. El seguimiento de los experimentos está en [modeling_fronts_tracking.md](docs/modeling_fronts_tracking.md). La aplicación de **Streamlit** permite cargar una foto o tomarla con la cámara y muestra la calidad, las probabilidades y el tamaño relativo; consulta [Despliegue](docs/06_deployment.md). Consulta la [guía de modelado y auditoría](docs/modeling_team_guide.md) antes de reproducir resultados.
 
 ## Integrantes
 
@@ -113,7 +113,7 @@ python -m ipykernel install --user --name fruit-quality --display-name "Python (
 pytest
 ```
 
-**App** (requiere `experiments/checkpoints/random_forest.joblib`; la CNN es opcional):
+**App** (requiere `random_forest_v2_burst_grid.joblib`; con `cnn_rgb_v2_burst_e3b.keras` y TensorFlow usa el ensamble):
 ```bash
 streamlit run src/app/app.py
 ```
