@@ -39,9 +39,14 @@ Cada experimento cambia una sola variable respecto al anterior aceptado.
 - **Por fuente**, el F1 del ensamble es 0,949 en Kaggle (solo `good`/`bad`) y 0,843 en AgriFreshNET (tres clases). La segunda es la cifra representativa del problema de tres clases.
 - **Sesgo de selección:** la CNN se eligió en validation entre tres variantes, y validation también se usó para EarlyStopping. Su 0,858 y el 0,875 del ensamble son algo optimistas.
 
-## Decisión pendiente (antes de test)
+## Versión final (plan simple)
 
-El equipo debe fijar por escrito el modelo final entre RF solo, CNN E3b sola y ensamble 0,5/0,5. La recomendación es el **ensamble 0,5/0,5 fijo**, justificado por el costo del error `bad→good` más que por F1. La app ya está preparada para las tres opciones (`config.APP_MODEL`). Antes de decidir conviene cerrar la prueba de ráfagas en AgriFreshNET ([preparación](03_data_preparation.md)), porque la ventaja del ensamble está justamente en esa fuente.
+Los modelos de la tabla anterior se entrenaron sobre v2, que todavía tenía la fuga de AgriFreshNET, y la CNN se eligió con validation. La versión que se sustenta se reentrena sobre el split v3 con el [plan simple](plan_simple.md):
+
+- **Clásicos:** `src/training/train_classic.py`. `GridSearchCV` con `StratifiedGroupKFold(3)` sobre train y F1 macro, para la regresión logística, la SVM lineal y Random Forest (estado), y para un **Random Forest de fruta** que identifica el producto.
+- **CNN:** la misma arquitectura E3b (4 bloques). La parada temprana usa el 10% de los grupos de train (`--es-holdout 0.1`), no validation.
+- **Estado final:** promedio 50/50 de RF y CNN, fijado de antemano.
+- **Validation y test:** una vez cada uno, con `src/evaluation/model_audit.py`.
 
 ## Reproducibilidad
 

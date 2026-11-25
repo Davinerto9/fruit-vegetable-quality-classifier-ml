@@ -22,7 +22,7 @@ foto estaba inflada por fotos de la misma sesión o de la misma pieza. Es la mis
 reveló la fuga de Kaggle (F0, cv_burst.py).
 
 El nivel del split v3 NO se elige con esta tabla (eso sería seleccionar por desempeño): la
-regla fijada en docs/protocolo_v3.md toma el nivel más grueso cuyo split cumpla cobertura y
+regla fijada en docs/plan_simple.md toma el nivel más grueso cuyo split cumpla cobertura y
 proporciones. Esta escalera cuantifica la fuga para el informe.
 """
 from __future__ import annotations

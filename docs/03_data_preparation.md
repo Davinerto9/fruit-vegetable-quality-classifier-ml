@@ -54,7 +54,7 @@ El split v1 (`splits.csv`) tenía grupos disjuntos, pero los grupos de Kaggle er
 
 Todos los modelos vigentes se entrenaron sobre v2. Detalle y comprobaciones: [seguimiento de modelado, F0](modeling_fronts_tracking.md#f0-fuga-por-ráfagas-de-kaggle-hallazgo-nuevo-bloqueante).
 
-**Riesgo abierto.** Muchos archivos de AgriFreshNET también tienen fecha y hora en el nombre (`IMG_AAAAMMDD_HHMM…`). En validation v2, 1.582 de sus 1.916 recortes las tienen, repartidos en 376 minutos con hasta 51 fotos por minuto, y 141 de esos minutos quedan divididos en varios grupos. Antes de congelar hay que repetir la prueba de CV agrupando por minuto.
+**Fuga en AgriFreshNET y split v3.** AgriFreshNET es una serie temporal: las carpetas `Fresh X(1-9)`, `Semi fresh X(9-20)` y `Rotten X(24-35)` cuentan días desde la compra, así que las mismas piezas aparecen durante semanas. v2 trataba cada foto original como un grupo; solo en validation v2, los 727 grupos de AgriFreshNET colapsan a 196 sesiones de día y 82 de semana. El split v3 (`src/data/split_v3.py`) deja cada sesión completa en una sola partición. Elige el nivel más grueso (semana, luego día, luego minuto) que conserve las tres calidades y las proporciones 70/15/15 con un desvío de hasta 5 puntos; el F1 no interviene en la elección. Ver el [plan simple](plan_simple.md).
 
 ## Artefactos y estado
 

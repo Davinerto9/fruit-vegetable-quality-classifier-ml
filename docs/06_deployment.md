@@ -14,11 +14,12 @@ streamlit run src/app/app.py
 
 | Archivo | Necesario para | Cómo se obtiene |
 | --- | --- | --- |
-| `experiments/checkpoints/random_forest_v2_burst_grid.joblib` | Random Forest (siempre) | `python -m src.training.rf_grid` (ver [modelado](04_modeling.md#reproducibilidad)) |
-| `experiments/checkpoints/cnn_rgb_v2_burst_e3b.keras` | CNN y ensamble | `python -m src.training.train_cnn --run-name v2_burst_e3b …` |
-| `experiments/results/*_v2_burst*.json` | Mostrar el F1 de validation de cada modelo y del ensamble | Se generan al entrenar y al evaluar el ensamble |
+| `experiments/checkpoints/random_forest_v3_week.joblib` | Estado (Random Forest) | `python -m src.training.train_classic` ([plan simple](plan_simple.md), paso 4) |
+| `experiments/checkpoints/product_rf_v3_week.joblib` | Qué fruta es | El mismo comando |
+| `experiments/checkpoints/cnn_rgb_v3_week.keras` | Estado (CNN) y promedio | `python -m src.training.train_cnn --run-name v3_week … --es-holdout 0.1` (paso 5) |
+| `experiments/results/classic_v3_week.json`, `cnn_rgb_v3_week.json` | Mostrar el F1 de validation | Se generan al entrenar |
 
-Los nombres se configuran en `src/config.py` (`APP_RF_CHECKPOINT`, `APP_CNN_CHECKPOINT`). `APP_MODEL` decide quién da la clase: `"ensemble"` (por defecto), `"random_forest"` o `"cnn"`. Si el modelo pedido no está disponible (por ejemplo, sin TensorFlow), la app usa el otro y lo avisa en pantalla.
+Los nombres se configuran en `src/config.py` (`APP_RF_CHECKPOINT`, `APP_CNN_CHECKPOINT`, `APP_PRODUCT_CHECKPOINT`). La app muestra primero **qué fruta es**; si la probabilidad de la fruta es menor que `APP_MIN_PRODUCT_CONFIDENCE` (0,5), dice que no la reconoce. `APP_MODEL` decide quién da la clase: `"ensemble"` (por defecto), `"random_forest"` o `"cnn"`. Si el modelo pedido no está disponible (por ejemplo, sin TensorFlow), la app usa el otro y lo avisa en pantalla.
 
 Los checkpoints no están en Git por tamaño: cada integrante debe tenerlos localmente. La app avisa si falta alguno o si la versión de scikit-learn instalada no es la 1.7.2 con la que se guardaron.
 

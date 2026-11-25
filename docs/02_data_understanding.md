@@ -41,7 +41,7 @@ Las gráficas deben mostrar conteos y soporte, para que las diferencias se inter
 
 La auditoría registró **17 grupos de AgriFreshNET en conflicto**, con 68 archivos y 51 contenidos distintos. En cada grupo, una imagen idéntica aparece con dos etiquetas incompatibles. Se excluyen los grupos completos hasta adjudicar sus etiquetas.
 
-Las fotos propias de mango tienen etiquetas confirmadas para la pieza del primer plano. Dos recortes pasan segmentación automática; cuatro siguen en revisión porque se detectan dos frutas en la escena. Las seis fotos permanecen en un mismo grupo. Las escenas con varias piezas no deben tratarse como una observación única. Las copias de una misma captura o sus aumentos se agrupan para evitar que aparezcan en distintos splits.
+Las seis fotos de mango **no son del equipo**: son las mismas seis de la carpeta compartida de la clase (*Photos of Fruits and Vegetables | APO III*, Google Drive) y deben citarse como aporte del pool de la clase. Tienen etiquetas confirmadas para la pieza del primer plano. Dos recortes pasan segmentación automática; cuatro siguen en revisión porque se detectan dos frutas en la escena. Las seis fotos permanecen en un mismo grupo. Las escenas con varias piezas no deben tratarse como una observación única. Las copias de una misma captura o sus aumentos se agrupan para evitar que aparezcan en distintos splits.
 
 ## Limitaciones y conclusión
 

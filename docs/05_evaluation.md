@@ -32,6 +32,8 @@ Fuentes: `experiments/diagnostics/out/ensemble_rf_cnn_e3b.txt`, `cnn_vs_rf_v2_bu
 
 ## Secuencia antes de abrir test
 
+> La secuencia vigente es la del [plan simple](plan_simple.md): split v3 sin la fuga de AgriFreshNET, reentrenamiento con `GridSearchCV` por grupos, validation una vez, fotos de celular etiquetadas a ciegas y evaluadas una vez, y test una vez. Los pasos de abajo son el resumen anterior.
+
 1. Probar si las ráfagas por fecha y hora de AgriFreshNET producen fuga (CV agrupada por minuto). Si la hay, generar un split v3 y reentrenar RF y E3b con la misma configuración, sin buscar variantes nuevas.
 2. Fijar por escrito el modelo final y su criterio (recomendado: ensamble 0,5/0,5, por el costo del error `bad→good`).
 3. Guardar el *freeze*: commit, hash del split, hashes de los checkpoints y versiones de las librerías.

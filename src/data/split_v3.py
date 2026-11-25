@@ -5,7 +5,7 @@ Fase CRISP-DM: Preparación de datos
 Uso:
     python -m src.data.split_v3 --level week               # escribe crops/splits_v3_week.csv
     python -m src.data.split_v3 --level week --dry-run     # solo informa cobertura y proporciones
-    python -m src.data.split_v3 --choose                   # aplica la regla de docs/protocolo_v3.md
+    python -m src.data.split_v3 --choose                   # aplica la regla de docs/plan_simple.md
 
 Motivo: AgriFreshNET fotografía las mismas piezas durante días (carpetas "Fresh X(1-9)",
 "Semi fresh X(9-20)", "Rotten X(24-35)"). En v2 cada foto original es su propio grupo, así que
