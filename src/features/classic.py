@@ -106,16 +106,35 @@ def _shape_features(mask: np.ndarray) -> np.ndarray:
 
 
 def extract_classic_features(crop_path: Path, mask_path: Path) -> np.ndarray:
-    """Extrae histogramas RGB/HSV, textura LBP y descriptores de forma."""
+    """Extrae histogramas RGB/HSV, textura LBP y descriptores de forma desde archivos PNG."""
     with Image.open(crop_path) as image:
         rgb = np.asarray(image.convert("RGB"), dtype=np.uint8)
     with Image.open(mask_path) as image:
         mask = np.asarray(image.convert("L"), dtype=np.uint8) > 127
+    return extract_classic_features_from_arrays(rgb, mask, name=str(crop_path))
 
+
+def extract_classic_features_from_arrays(rgb: np.ndarray, mask: np.ndarray,
+                                         name: str = "imagen") -> np.ndarray:
+    """
+    Extrae los mismos atributos que extract_classic_features() desde arreglos en memoria.
+
+    Parámetros:
+        rgb: recorte RGB uint8 (alto, ancho, 3).
+        mask: máscara (alto, ancho); booleana, o uint8 donde > 127 es fruta.
+        name: nombre para los mensajes de error.
+
+    Retorna:
+        Vector float32 de len(FEATURE_NAMES) atributos.
+    """
+    rgb = np.asarray(rgb, dtype=np.uint8)
+    mask = np.asarray(mask)
+    if mask.dtype != bool:
+        mask = mask > 127
     if rgb.shape[:2] != mask.shape:
-        raise ValueError(f"Recorte y máscara tienen tamaños distintos: {crop_path}")
+        raise ValueError(f"Recorte y máscara tienen tamaños distintos: {name}")
     if not mask.any():
-        raise ValueError(f"La máscara está vacía: {mask_path}")
+        raise ValueError(f"La máscara está vacía: {name}")
 
     hsv = np.asarray(Image.fromarray(rgb).convert("HSV"), dtype=np.uint8)
     pixels_rgb = rgb[mask]
@@ -131,5 +150,5 @@ def extract_classic_features(crop_path: Path, mask_path: Path) -> np.ndarray:
     gray = np.asarray(Image.fromarray(rgb).convert("L"), dtype=np.uint8)
     features = np.concatenate((*color_features, _lbp_histogram(gray, mask), _shape_features(mask)))
     if features.shape[0] != len(FEATURE_NAMES) or not np.isfinite(features).all():
-        raise ValueError(f"Vector de atributos inválido: {crop_path}")
+        raise ValueError(f"Vector de atributos inválido: {name}")
     return features.astype(np.float32, copy=False)

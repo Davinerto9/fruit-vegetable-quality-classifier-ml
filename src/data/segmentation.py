@@ -347,6 +347,47 @@ def normalized_diameter(contour: np.ndarray, shape: tuple) -> float:
     return 2 * np.sqrt(cv2.contourArea(contour) / np.pi) / max(shape[:2])
 
 
+def size_category(d_norm: float | None) -> str | None:
+    """
+    Convierte el diámetro normalizado en una categoría de tamaño con config.SIZE_THRESHOLDS.
+
+    Parámetros:
+        d_norm: diámetro normalizado de normalized_diameter(), o None.
+
+    Retorna:
+        "small", "medium" o "large"; None si d_norm es None.
+    """
+    if d_norm is None:
+        return None
+    for label, (low, high) in config.SIZE_THRESHOLDS.items():
+        if low <= d_norm < high:
+            return label
+    return "large"
+
+
+def model_inputs(result: dict) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Recorte y máscara cuadrados de config.IMG_SIZE, tal como los reciben los modelos.
+
+    Lo usan la preparación de datos (src.data.prepare) y la app, para que el entrenamiento y la
+    inferencia apliquen exactamente el mismo preprocesamiento.
+
+    Parámetros:
+        result: dict de process() o de prepare.manual_segment() con status "ok"; usa
+            crop, mask y contour.
+
+    Retorna:
+        (recorte BGR uint8 con fondo (alto, ancho, 3), máscara uint8 (alto, ancho) con 255 = fruta).
+    """
+    box = cv2.boundingRect(result["contour"])
+    crop_mask = square_crop(result["mask"], box, cv2.BORDER_CONSTANT)
+    height, width = config.IMG_SIZE
+    interpolation = cv2.INTER_AREA if result["crop"].shape[0] >= height else cv2.INTER_LINEAR
+    crop = cv2.resize(result["crop"], (width, height), interpolation=interpolation)
+    mask = cv2.resize(crop_mask, (width, height), interpolation=cv2.INTER_NEAREST)
+    return crop, mask
+
+
 def is_dubious(contour: np.ndarray, mask_small: np.ndarray, shape: tuple) -> bool:
     """
     Control de sanidad de la máscara.

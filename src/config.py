@@ -157,12 +157,24 @@ GRAY_TOL = 4.0
 # --- Tamaño y particiones ----------------------------------------------------
 
 # Intervalos [mín, máx) del diámetro normalizado (diámetro equivalente / lado mayor de la imagen).
-# PROVISIONALES: se ajustan con la distribución de diámetros observada en el EDA.
+# Calibrados con las 35 fotos propias de una pieza con tamaño anotado: coinciden con 34 (97 %).
+# El corte de "small" se apoya en solo dos ejemplos y no hay ejemplos "large", así que el corte
+# superior es una extrapolación. d_norm depende de la distancia de la cámara: estos umbrales
+# valen para el protocolo de captura del equipo, no son centímetros. Ver
+# docs/supporting_docs/mathematical_and_theoretical_foundations.md §4.
 SIZE_THRESHOLDS = {
-    "small": (0.0, 0.45),
-    "medium": (0.45, 0.70),
-    "large": (0.70, 1.0),
+    "small": (0.0, 0.33),
+    "medium": (0.33, 0.55),
+    "large": (0.55, 1.01),
 }
+
+# --- Aplicación ----------------------------------------------------------------
+
+# Probabilidad mínima de la clase predicha para mostrarla sin advertencia. Por debajo, la app
+# pide revisión manual. PROVISIONAL: elegirlo en validation antes de la entrega.
+APP_MIN_CONFIDENCE = 0.55
+# Versión de scikit-learn con la que se serializaron los checkpoints clásicos.
+SKLEARN_CHECKPOINT_VERSION = "1.7.2"
 
 # Proporción del conjunto de prueba (se usa una sola vez, en la evaluación final).
 TEST_SIZE = 0.15

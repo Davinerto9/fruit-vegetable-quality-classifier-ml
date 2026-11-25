@@ -20,7 +20,7 @@ A partir de una foto de **una** fruta o verdura sobre fondo uniforme, el sistema
 - **Calidad:** buena (`good`), regular (`regular`) o mala (`bad`), según los [criterios de anotación](docs/criterios-calidad.md).
 - **Tamaño:** pequeño, mediano o grande, además de un diámetro normalizado.
 
-Seguimos la metodología **CRISP-DM**. El modelado entrenó regresión logística, SVM lineal y Random Forest sobre atributos clásicos, además de una CNN RGB. Los resultados de validation son preliminares y el conjunto test sigue reservado. La aplicación de **Streamlit** está planeada, pero aún no está implementada. Consulta la [guía de modelado y auditoría](docs/modeling_team_guide.md) antes de reproducir resultados.
+Seguimos la metodología **CRISP-DM**. El modelado entrenó regresión logística, SVM lineal y Random Forest sobre atributos clásicos, además de una CNN RGB. Los resultados de validation son preliminares y el conjunto test sigue reservado. La aplicación de **Streamlit** permite cargar una foto o tomarla con la cámara y muestra la calidad, las probabilidades y el tamaño relativo; consulta [Despliegue](docs/06_deployment.md). Consulta la [guía de modelado y auditoría](docs/modeling_team_guide.md) antes de reproducir resultados.
 
 ## Integrantes
 
@@ -37,10 +37,9 @@ data/own/          fotos propias + labels.csv
 data/processed/    índices, particiones y características derivadas
 src/data/          carga, segmentación, preprocesamiento y partición
 src/features/      extracción de características
-src/models/        definición de modelos (CNN)
 src/training/      entrenamiento
 src/evaluation/    métricas y gráficas
-src/app/           app Streamlit
+src/app/           app Streamlit (app.py) e inferencia (inference.py)
 notebooks/         EDA, modelado y resultados
 experiments/       logs/, checkpoints/, results/, figures/
 docs/              documentación extendida
@@ -114,10 +113,11 @@ python -m ipykernel install --user --name fruit-quality --display-name "Python (
 pytest
 ```
 
-**App** (disponible cuando se implemente `src/app/app.py`):
+**App** (requiere `experiments/checkpoints/random_forest.joblib`; la CNN es opcional):
 ```bash
 streamlit run src/app/app.py
 ```
+Detalles de arquitectura, decisiones y pruebas de uso en [Despliegue](docs/06_deployment.md).
 
 ## Créditos
 

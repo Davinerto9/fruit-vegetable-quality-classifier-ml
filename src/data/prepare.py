@@ -178,12 +178,9 @@ def prepare_record(row: dict[str, str], output: Path, manual: dict, *, pilot: bo
     original = Path(row["filename"])
     crop = Path("images") / original.with_name(original.name + ".png")
     mask = Path("masks") / original.with_name(original.name + ".png")
-    box = cv2.boundingRect(result["contour"])
-    crop_mask = segmentation.square_crop(result["mask"], box, cv2.BORDER_CONSTANT)
-    height, width = config.IMG_SIZE
-    interpolation = cv2.INTER_AREA if result["crop"].shape[0] >= height else cv2.INTER_LINEAR
-    write_png(output / crop, cv2.resize(result["crop"], (width, height), interpolation=interpolation))
-    write_png(output / mask, cv2.resize(crop_mask, (width, height), interpolation=cv2.INTER_NEAREST))
+    crop_image, crop_mask = segmentation.model_inputs(result)
+    write_png(output / crop, crop_image)
+    write_png(output / mask, crop_mask)
     record.update(
         decision="candidate", d_norm=float(result["d_norm"]),
         crop=crop.as_posix(), crop_mask=mask.as_posix(),
