@@ -23,7 +23,7 @@ from src import config
 PARTITIONS = ("train", "val", "test")
 
 
-def assign_groups(rows: list[dict[str, str]]) -> dict[str, str]:
+def assign_groups(rows: list[dict[str, str]], trials: int = 256, cut: str = "groups") -> dict[str, str]:
     """
     Asigna cada grupo a una partición comparando 256 permutaciones aleatorias de los grupos.
 
@@ -35,6 +35,11 @@ def assign_groups(rows: list[dict[str, str]]) -> dict[str, str]:
 
     Parámetros:
         rows: filas candidatas con group, quality, source y product.
+        trials: permutaciones a comparar. 256 reproduce v1 y v2; con grupos grandes y de
+            tamaño desigual (split v3) conviene buscar más.
+        cut: "groups" (v1, v2) asigna a val y test un número fijo de grupos; "files" corta la
+            permutación donde el acumulado de archivos alcanza las proporciones objetivo, lo
+            que equilibra mejor cuando los grupos tienen tamaños muy distintos.
 
     Retorna:
         dict grupo -> "train" | "val" | "test".
@@ -81,9 +86,15 @@ def assign_groups(rows: list[dict[str, str]]) -> dict[str, str]:
     best_parts = None
     # Compara asignaciones de grupos completos. Prioriza cobertura de calidad y
     # después el balance por archivo, fuente y producto.
-    for _ in range(256):
+    for _ in range(trials):
         order = rng.permutation(len(groups))
-        test, val, train = np.split(order, [test_groups, test_groups + val_groups])
+        if cut == "files":
+            cumulative = np.cumsum(counts[order, 0])
+            n_test = int(np.searchsorted(cumulative, config.TEST_SIZE * totals[0])) + 1
+            n_val = int(np.searchsorted(cumulative, (config.TEST_SIZE + config.VAL_SIZE) * totals[0])) + 1
+            test, val, train = np.split(order, [n_test, max(n_val, n_test + 1)])
+        else:
+            test, val, train = np.split(order, [test_groups, test_groups + val_groups])
         parts = (train, val, test)
         actual = np.array([counts[part].sum(axis=0) for part in parts])
         has_quality = actual[:, quality_cols] > 0
