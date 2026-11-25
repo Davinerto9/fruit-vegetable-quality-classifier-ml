@@ -170,6 +170,16 @@ SIZE_THRESHOLDS = {
 
 # --- Aplicación ----------------------------------------------------------------
 
+# Checkpoints que usa la app (en CHECKPOINTS). Son los candidatos sobre el split v2 por ráfagas.
+APP_RF_CHECKPOINT = "random_forest_v2_burst_grid.joblib"
+APP_CNN_CHECKPOINT = "cnn_rgb_v2_burst_e3b.keras"
+# Modelo que decide la clase en la app: "ensemble" (voto suave RF + CNN), "random_forest" o "cnn".
+# La elección final la fija el equipo antes de abrir test; si falta un modelo, la app usa el otro.
+APP_MODEL = "ensemble"
+# Peso de la CNN en el voto suave p = (1 - w) * p_RF + w * p_CNN. Fijado en 0,5 antes de ver
+# resultados (experiments/diagnostics/eval_ensemble_v2.py); no se ajusta con validation.
+APP_ENSEMBLE_CNN_WEIGHT = 0.5
+
 # Probabilidad mínima de la clase predicha para mostrarla sin advertencia. Por debajo, la app
 # pide revisión manual. PROVISIONAL: elegirlo en validation antes de la entrega.
 APP_MIN_CONFIDENCE = 0.55

@@ -26,8 +26,11 @@ from src.app.inference import (  # noqa: E402
     SIZE_LABELS_ES,
     analyze_image,
     decode_image,
+    ensemble_validation_f1,
     load_models,
 )
+
+MODE_NAMES = {"ensemble": "Ensamble RF + CNN", "random_forest": "Random Forest", "cnn": "CNN"}
 
 QUALITY_COLORS = {"good": "#2e7d32", "regular": "#b26a00", "bad": "#c62828"}
 QUALITY_HELP = {
@@ -45,10 +48,18 @@ def get_models(include_cnn: bool):
 def render_sidebar() -> bool:
     st.sidebar.header("Modelos")
     include_cnn = st.sidebar.toggle(
-        "Comparar con la CNN", value=False,
-        help="Requiere TensorFlow y el checkpoint experiments/checkpoints/cnn_rgb.keras.",
+        "Usar la CNN", value=config.APP_MODEL != "random_forest",
+        help=f"Necesaria para el ensamble. Requiere TensorFlow y {config.APP_CNN_CHECKPOINT}.",
     )
     models, notices = get_models(include_cnn)
+    st.sidebar.markdown(f"Decide: **{MODE_NAMES.get(config.APP_MODEL, config.APP_MODEL)}**")
+    if config.APP_MODEL == "ensemble":
+        f1 = ensemble_validation_f1()
+        st.sidebar.caption(
+            f"Voto suave con peso fijo {1 - config.APP_ENSEMBLE_CNN_WEIGHT:.1f} RF / "
+            f"{config.APP_ENSEMBLE_CNN_WEIGHT:.1f} CNN"
+            + ("" if f1 is None else f". F1 macro en validation: {f1:.3f}.")
+        )
     for model in models:
         f1 = "s/d" if model.validation_f1 is None else f"{model.validation_f1:.3f}"
         st.sidebar.markdown(
@@ -99,7 +110,9 @@ def render_result(analysis) -> None:
             st.warning("La foto es válida, pero no hay modelos cargados para clasificarla.")
             return
 
-        main = analysis.predictions[0]
+        main = analysis.final
+        if analysis.final_note:
+            st.warning(analysis.final_note)
         color = QUALITY_COLORS[main.label]
         st.markdown(
             f"<div style='font-size:0.9rem;opacity:0.7'>Calidad visible ({main.model_name})</div>"
@@ -125,7 +138,7 @@ def render_result(analysis) -> None:
 
         if len(analysis.predictions) > 1:
             st.divider()
-            st.markdown("**Comparación de modelos**")
+            st.markdown("**Cada modelo por separado**")
             for prediction in analysis.predictions:
                 st.markdown(
                     f"- {prediction.model_name}: {QUALITY_LABELS_ES[prediction.label]} "
@@ -146,6 +159,11 @@ def main() -> None:
         "La predicción describe la apariencia externa y apoya la inspección humana. No evalúa "
         "inocuidad ni estado interno, y no reemplaza la decisión de quien inspecciona. "
         "Las fotos no se guardan."
+    )
+    st.caption(
+        "Los modelos se entrenaron con fotos de dos datasets públicos. Con fotos de celular, "
+        "en otras condiciones de luz y fondo, el desempeño todavía no está medido y puede ser "
+        "menor que el reportado."
     )
 
     include_cnn = render_sidebar()

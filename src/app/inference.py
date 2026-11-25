@@ -5,8 +5,9 @@ predice la calidad con los checkpoints guardados.
 Fase CRISP-DM: Despliegue
 Uso:
     from src.app.inference import analyze_image, load_models
-    models = load_models()                       # Random Forest y, si hay TensorFlow, la CNN
+    models, avisos = load_models()               # Random Forest y, si hay TensorFlow, la CNN
     analysis = analyze_image(imagen_bgr, models)
+    analysis.final                               # decisión según config.APP_MODEL
 
 El módulo no depende de Streamlit, así que se puede probar con pytest y reutilizar en otra
 interfaz (por ejemplo, una simulación de línea de empaque con cámara).
@@ -18,6 +19,9 @@ Flujo de analyze_image():
 3. src.data.segmentation.model_inputs(): recorte y máscara de 128x128, igual que en prepare.py.
 4. Atributos clásicos (src.features.classic) para Random Forest; recorte x máscara para la CNN.
 5. Probabilidades por clase en el orden de config.QUALITY_CLASSES y categoría de tamaño.
+6. Decisión final según config.APP_MODEL: voto suave RF + CNN con peso fijo
+   config.APP_ENSEMBLE_CNN_WEIGHT (el mismo de experiments/diagnostics/eval_ensemble_v2.py),
+   o un solo modelo. Si el modelo pedido no está disponible, se usa el que haya y se avisa.
 
 No se guarda ninguna imagen: todo ocurre en memoria.
 """
@@ -89,6 +93,8 @@ class Analysis:
     crop_rgb: np.ndarray | None           # recorte 128x128 con fondo
     crop_masked_rgb: np.ndarray | None    # recorte 128x128 sin fondo (lo que "ve" el modelo)
     predictions: list[Prediction] = field(default_factory=list)
+    final: Prediction | None = None       # predicción que decide (ensamble o un modelo)
+    final_note: str | None = None         # aviso si no se pudo usar config.APP_MODEL
 
 
 # --- Carga de modelos ----------------------------------------------------------
@@ -102,15 +108,26 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _validation_f1(model_key: str) -> float | None:
-    """F1 macro de validation registrado para el modelo, si existe el JSON de resultados."""
-    path = config.RESULTS / f"{model_key}.json"
+def _validation_f1(result_stem: str) -> float | None:
+    """F1 macro de validation registrado en experiments/results/<result_stem>.json, si existe."""
+    path = config.RESULTS / f"{result_stem}.json"
     if not path.is_file():
         return None
     try:
-        return float(json.loads(path.read_text(encoding="utf-8"))["validation"]["f1_macro"])
+        saved = json.loads(path.read_text(encoding="utf-8"))
+        if "validation" in saved:
+            return float(saved["validation"]["f1_macro"])
+        return float(saved["models"]["ensemble_0.5"]["overall"]["f1_macro"])  # JSON del ensamble
     except (KeyError, ValueError, TypeError):
         return None
+
+
+def ensemble_validation_f1() -> float | None:
+    """F1 de validation del ensamble formado por los checkpoints de la app, si se evaluó."""
+    # Nombre que usa eval_ensemble_v2.py: ensemble_rf_<tag RF>_cnn_<run CNN>.json
+    rf_tag = Path(config.APP_RF_CHECKPOINT).stem.removeprefix("random_forest_")
+    cnn_run = Path(config.APP_CNN_CHECKPOINT).stem.removeprefix("cnn_rgb_")
+    return _validation_f1(f"ensemble_rf_{rf_tag}_cnn_{cnn_run}")
 
 
 def load_classic_model(checkpoint: Path, key: str = "random_forest",
@@ -145,7 +162,7 @@ def load_classic_model(checkpoint: Path, key: str = "random_forest",
         )
     return ModelHandle(key=key, name=name, kind="classic", estimator=estimator,
                        checkpoint=checkpoint, sha256=_sha256(checkpoint),
-                       validation_f1=_validation_f1(key), warnings=notes)
+                       validation_f1=_validation_f1(checkpoint.stem), warnings=notes)
 
 
 def load_cnn_model(checkpoint: Path) -> ModelHandle:
@@ -155,7 +172,7 @@ def load_cnn_model(checkpoint: Path) -> ModelHandle:
     model = tf.keras.models.load_model(checkpoint, compile=False)
     return ModelHandle(key="cnn_rgb", name="CNN RGB", kind="cnn", estimator=model,
                        checkpoint=checkpoint, sha256=_sha256(checkpoint),
-                       validation_f1=_validation_f1("cnn_rgb"))
+                       validation_f1=_validation_f1(checkpoint.stem))
 
 
 def load_models(include_cnn: bool = True) -> tuple[list[ModelHandle], list[str]]:
@@ -167,18 +184,20 @@ def load_models(include_cnn: bool = True) -> tuple[list[ModelHandle], list[str]]
         en los avisos en lugar de detener la app.
     """
     models, notices = [], []
-    rf_path = config.CHECKPOINTS / "random_forest.joblib"
+    rf_path = config.CHECKPOINTS / config.APP_RF_CHECKPOINT
     if rf_path.is_file():
         try:
             models.append(load_classic_model(rf_path))
         except Exception as error:  # noqa: BLE001 - se muestra al usuario
             notices.append(f"No se pudo cargar Random Forest: {error}")
     else:
-        notices.append(f"No se encontró {rf_path.relative_to(config.ROOT)}. Entrena con "
-                       "`python -m src.training.classical_models`.")
+        notices.append(f"No se encontró {rf_path.name} en {config.CHECKPOINTS}. Entrena con "
+                       "`python -m src.training.rf_grid --tag v2_burst_grid`.")
 
-    cnn_path = config.CHECKPOINTS / "cnn_rgb.keras"
-    if include_cnn and cnn_path.is_file():
+    cnn_path = config.CHECKPOINTS / config.APP_CNN_CHECKPOINT
+    if include_cnn and not cnn_path.is_file():
+        notices.append(f"No se encontró {cnn_path.name}: la CNN no está disponible.")
+    elif include_cnn:
         try:
             models.append(load_cnn_model(cnn_path))
         except ImportError:
@@ -218,6 +237,51 @@ def predict_cnn(model: ModelHandle, crop_rgb: np.ndarray, mask: np.ndarray) -> d
     probabilities = np.asarray(model.estimator.predict(tensor[None], verbose=0))[0]
     return {label: float(probabilities[index])
             for index, label in enumerate(config.QUALITY_CLASSES)}
+
+
+def combine(rf: Prediction, cnn: Prediction, cnn_weight: float) -> Prediction:
+    """
+    Voto suave: p_k = (1 - w) * p_RF,k + w * p_CNN,k y la clase es el argmax.
+
+    Ambas probabilidades ya están en el orden de config.QUALITY_CLASSES.
+    """
+    probabilities = {label: (1 - cnn_weight) * rf.probabilities[label]
+                     + cnn_weight * cnn.probabilities[label]
+                     for label in config.QUALITY_CLASSES}
+    label = max(probabilities, key=probabilities.get)
+    return Prediction(
+        model_key="ensemble", model_name=f"Ensamble RF + CNN ({1 - cnn_weight:.1f}/{cnn_weight:.1f})",
+        label=label, probabilities=probabilities,
+        confident=probabilities[label] >= config.APP_MIN_CONFIDENCE,
+    )
+
+
+def final_decision(predictions: list[Prediction], mode: str | None = None,
+                   cnn_weight: float | None = None) -> tuple[Prediction | None, str | None]:
+    """
+    Elige la predicción que decide según config.APP_MODEL.
+
+    Retorna:
+        (predicción final, aviso). El aviso explica si se usó otro modelo porque el pedido
+        no estaba disponible.
+    """
+    mode = mode or config.APP_MODEL
+    weight = config.APP_ENSEMBLE_CNN_WEIGHT if cnn_weight is None else cnn_weight
+    rf = next((p for p in predictions if p.model_key == "random_forest"), None)
+    cnn = next((p for p in predictions if p.model_key == "cnn_rgb"), None)
+    if mode == "ensemble" and rf and cnn:
+        return combine(rf, cnn, weight), None
+    if mode == "cnn" and cnn:
+        return cnn, None
+    if mode == "random_forest" and rf:
+        return rf, None
+    fallback = rf or cnn or (predictions[0] if predictions else None)
+    if fallback is None:
+        return None, None
+    wanted = {"ensemble": "el ensamble RF + CNN", "cnn": "la CNN",
+              "random_forest": "Random Forest"}.get(mode, mode)
+    return fallback, (f"No se pudo usar {wanted}: la decisión la toma {fallback.model_name}. "
+                      f"Modelos cargados: {', '.join(p.model_name for p in predictions)}.")
 
 
 def _overlay(image_bgr: np.ndarray, contour: np.ndarray | None, max_side: int = 900) -> np.ndarray:
@@ -281,5 +345,6 @@ def analyze_image(image_bgr: np.ndarray | None, models: list[ModelHandle]) -> An
             probabilities=probabilities,
             confident=probabilities[label] >= config.APP_MIN_CONFIDENCE,
         ))
+    final, note = final_decision(predictions)
     return Analysis(status, True, None, d_norm, segmentation.size_category(d_norm),
-                    overlay, crop_rgb, masked_rgb, predictions)
+                    overlay, crop_rgb, masked_rgb, predictions, final, note)

@@ -103,3 +103,39 @@ def test_decode_image_reads_encoded_photo():
 ])
 def test_size_category_uses_configured_thresholds(d_norm, expected):
     assert segmentation.size_category(d_norm) == expected
+
+
+def _prediction(key, probabilities):
+    label = max(probabilities, key=probabilities.get)
+    return inference.Prediction(key, key, label, probabilities, True)
+
+
+def test_ensemble_is_the_fixed_soft_vote():
+    """p = 0,5·p_RF + 0,5·p_CNN, igual que experiments/diagnostics/eval_ensemble_v2.py."""
+    rf = _prediction("random_forest", {"good": 0.6, "regular": 0.3, "bad": 0.1})
+    cnn = _prediction("cnn_rgb", {"good": 0.1, "regular": 0.2, "bad": 0.7})
+    final, note = inference.final_decision([rf, cnn], mode="ensemble", cnn_weight=0.5)
+    assert note is None and final.model_key == "ensemble"
+    assert final.probabilities == pytest.approx({"good": 0.35, "regular": 0.25, "bad": 0.40})
+    assert final.label == "bad"  # ningún modelo solo decide: el voto combinado sí
+
+
+def test_ensemble_falls_back_to_random_forest_with_a_notice():
+    rf = _prediction("random_forest", {"good": 0.6, "regular": 0.3, "bad": 0.1})
+    final, note = inference.final_decision([rf], mode="ensemble")
+    assert final is rf
+    assert "ensamble" in note
+
+
+def test_single_model_mode_ignores_the_other_model():
+    rf = _prediction("random_forest", {"good": 0.6, "regular": 0.3, "bad": 0.1})
+    cnn = _prediction("cnn_rgb", {"good": 0.1, "regular": 0.2, "bad": 0.7})
+    assert inference.final_decision([rf, cnn], mode="random_forest") == (rf, None)
+    assert inference.final_decision([rf, cnn], mode="cnn") == (cnn, None)
+
+
+def test_analysis_exposes_a_final_decision(tiny_model):
+    analysis = inference.analyze_image(scene([(200, 200, 80)]), [tiny_model])
+    assert analysis.final is analysis.predictions[0]
+    if config.APP_MODEL == "ensemble":
+        assert analysis.final_note  # sin CNN, avisa que decide Random Forest
