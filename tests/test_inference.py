@@ -139,3 +139,28 @@ def test_analysis_exposes_a_final_decision(tiny_model):
     assert analysis.final is analysis.predictions[0]
     if config.APP_MODEL == "ensemble":
         assert analysis.final_note  # sin CNN, avisa que decide Random Forest
+
+
+@pytest.fixture(scope="module")
+def tiny_product_model(tmp_path_factory):
+    rng = np.random.default_rng(1)
+    X = rng.random((60, len(FEATURE_NAMES)), dtype=np.float32)
+    y = np.array(["orange", "banana", "apple"] * 20)
+    model = RandomForestClassifier(n_estimators=5, random_state=config.SEED).fit(X, y)
+    path = tmp_path_factory.mktemp("checkpoints") / "product_rf_t.joblib"
+    joblib.dump({"model": model}, path)
+    handle = inference.load_classic_model(path, key="product_rf", name="Fruta")
+    return inference.ModelHandle(**{**handle.__dict__, "kind": "product"})
+
+
+def test_analysis_identifies_fruit_and_keeps_quality_separate(tiny_model, tiny_product_model):
+    analysis = inference.analyze_image(scene([(200, 200, 80)]), [tiny_model, tiny_product_model])
+    assert analysis.product in {"orange", "banana", "apple"}
+    probs = list(analysis.product_probabilities.values())
+    assert probs == sorted(probs, reverse=True) and sum(probs) == pytest.approx(1.0)
+    assert analysis.product_confident == (probs[0] >= config.APP_MIN_PRODUCT_CONFIDENCE)
+    assert [p.model_key for p in analysis.predictions] == ["random_forest"]  # la fruta no vota calidad
+
+
+def test_every_training_product_has_a_spanish_name():
+    assert set(config.PRODUCTS) <= set(inference.PRODUCT_LABELS_ES)

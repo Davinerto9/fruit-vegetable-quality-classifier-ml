@@ -170,9 +170,14 @@ SIZE_THRESHOLDS = {
 
 # --- Aplicación ----------------------------------------------------------------
 
-# Checkpoints que usa la app (en CHECKPOINTS). Son los candidatos sobre el split v2 por ráfagas.
-APP_RF_CHECKPOINT = "random_forest_v2_burst_grid.joblib"
-APP_CNN_CHECKPOINT = "cnn_rgb_v2_burst_e3b.keras"
+# Checkpoints que usa la app (en CHECKPOINTS), entrenados sobre el split v3 (sesiones de
+# AgriFreshNET completas por partición; ver docs/plan_simple.md). Si split_v3 --choose elige
+# otro nivel que "week", cambia el sufijo.
+APP_RF_CHECKPOINT = "random_forest_v3_week.joblib"          # calidad (train_classic)
+APP_CNN_CHECKPOINT = "cnn_rgb_v3_week.keras"                # calidad (train_cnn --run-name v3_week)
+APP_PRODUCT_CHECKPOINT = "product_rf_v3_week.joblib"        # fruta (train_classic)
+# Probabilidad mínima para afirmar qué fruta es; por debajo, la app dice que no la reconoce.
+APP_MIN_PRODUCT_CONFIDENCE = 0.5
 # Modelo que decide la clase en la app: "ensemble" (voto suave RF + CNN), "random_forest" o "cnn".
 # La elección final la fija el equipo antes de abrir test; si falta un modelo, la app usa el otro.
 APP_MODEL = "ensemble"

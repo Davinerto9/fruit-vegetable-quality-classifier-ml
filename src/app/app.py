@@ -22,6 +22,7 @@ import streamlit as st  # noqa: E402
 
 from src import config  # noqa: E402
 from src.app.inference import (  # noqa: E402
+    PRODUCT_LABELS_ES,
     QUALITY_LABELS_ES,
     SIZE_LABELS_ES,
     analyze_image,
@@ -80,7 +81,8 @@ def render_sidebar() -> bool:
         "- Distancia parecida entre fotos: el tamaño es relativo al encuadre."
     )
     st.sidebar.caption(
-        "Productos con datos de entrenamiento: " + ", ".join(config.PRODUCTS) + "."
+        "Frutas y verduras que conoce el modelo: "
+        + ", ".join(PRODUCT_LABELS_ES.get(p, p) for p in config.PRODUCTS) + "."
     )
     return include_cnn
 
@@ -90,6 +92,24 @@ def render_probabilities(probabilities: dict[str, float]) -> None:
         value = probabilities[label]
         st.markdown(f"{QUALITY_LABELS_ES[label]}: **{value:.0%}**")
         st.progress(min(max(value, 0.0), 1.0))
+
+
+def render_product(analysis) -> None:
+    """Qué fruta es. Si el modelo no está seguro, lo dice en lugar de adivinar."""
+    if analysis.product is None:
+        return
+    name = PRODUCT_LABELS_ES.get(analysis.product, analysis.product)
+    probability = analysis.product_probabilities[analysis.product]
+    if analysis.product_confident:
+        st.markdown(f"<div style='font-size:0.9rem;opacity:0.7'>Fruta</div>"
+                    f"<div style='font-size:1.8rem;font-weight:700'>{name} "
+                    f"<span style='font-size:1rem;opacity:0.7'>({probability:.0%})</span></div>",
+                    unsafe_allow_html=True)
+    else:
+        st.warning(f"No reconozco esta fruta con seguridad (lo más parecido: {name}, "
+                   f"{probability:.0%}). Puede ser una que el modelo no conoce; la calidad "
+                   "de abajo es menos confiable.")
+    st.divider()
 
 
 def render_result(analysis) -> None:
@@ -110,6 +130,7 @@ def render_result(analysis) -> None:
             st.warning("La foto es válida, pero no hay modelos cargados para clasificarla.")
             return
 
+        render_product(analysis)
         main = analysis.final
         if analysis.final_note:
             st.warning(analysis.final_note)

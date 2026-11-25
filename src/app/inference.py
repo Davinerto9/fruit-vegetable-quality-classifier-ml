@@ -52,6 +52,12 @@ REJECTION_MESSAGES = {
 
 # Nombres en español para la interfaz.
 QUALITY_LABELS_ES = {"good": "Buena", "regular": "Regular", "bad": "Mala"}
+PRODUCT_LABELS_ES = {
+    "apple": "Manzana", "banana": "Banano", "guava": "Guayaba", "lime": "Limón",
+    "orange": "Naranja", "pomegranate": "Granada", "bitter_melon": "Melón amargo",
+    "cucumber": "Pepino", "eggplant": "Berenjena", "papaya": "Papaya", "pineapple": "Piña",
+    "tomato": "Tomate",
+}
 SIZE_LABELS_ES = {"small": "Pequeño", "medium": "Mediano", "large": "Grande"}
 
 
@@ -61,7 +67,7 @@ class ModelHandle:
 
     key: str                      # "random_forest" o "cnn_rgb"
     name: str                     # nombre para mostrar
-    kind: str                     # "classic" o "cnn"
+    kind: str                     # "classic", "cnn" o "product"
     estimator: object             # objeto de scikit-learn o modelo de Keras
     checkpoint: Path
     sha256: str
@@ -95,6 +101,9 @@ class Analysis:
     predictions: list[Prediction] = field(default_factory=list)
     final: Prediction | None = None       # predicción que decide (ensamble o un modelo)
     final_note: str | None = None         # aviso si no se pudo usar config.APP_MODEL
+    product: str | None = None            # fruta más probable (config.PRODUCTS)
+    product_probabilities: dict[str, float] = field(default_factory=dict)
+    product_confident: bool = False       # probabilidad >= config.APP_MIN_PRODUCT_CONFIDENCE
 
 
 # --- Carga de modelos ----------------------------------------------------------
@@ -109,9 +118,20 @@ def _sha256(path: Path) -> str:
 
 
 def _validation_f1(result_stem: str) -> float | None:
-    """F1 macro de validation registrado en experiments/results/<result_stem>.json, si existe."""
+    """
+    F1 macro de validation registrado para un checkpoint: en experiments/results/<stem>.json
+    o, para los modelos de src.training.train_classic, en classic_<tag>.json.
+    """
     path = config.RESULTS / f"{result_stem}.json"
     if not path.is_file():
+        for summary in sorted(config.RESULTS.glob("classic_*.json")):
+            try:
+                models = json.loads(summary.read_text(encoding="utf-8"))["models"]
+            except (KeyError, ValueError):
+                continue
+            for item in models.values():
+                if Path(item.get("checkpoint", "")).stem == result_stem:
+                    return float(item["validation"]["f1_macro"])
         return None
     try:
         saved = json.loads(path.read_text(encoding="utf-8"))
@@ -192,7 +212,18 @@ def load_models(include_cnn: bool = True) -> tuple[list[ModelHandle], list[str]]
             notices.append(f"No se pudo cargar Random Forest: {error}")
     else:
         notices.append(f"No se encontró {rf_path.name} en {config.CHECKPOINTS}. Entrena con "
-                       "`python -m src.training.rf_grid --tag v2_burst_grid`.")
+                       "`python -m src.training.train_classic` (ver docs/plan_simple.md).")
+
+    product_path = config.CHECKPOINTS / config.APP_PRODUCT_CHECKPOINT
+    if product_path.is_file():
+        try:
+            handle = load_classic_model(product_path, key="product_rf", name="Fruta (Random Forest)")
+            models.append(ModelHandle(**{**handle.__dict__, "kind": "product"}))
+        except Exception as error:  # noqa: BLE001
+            notices.append(f"No se pudo cargar el modelo de fruta: {error}")
+    else:
+        notices.append(f"No se encontró {product_path.name}: la app no identificará la fruta. "
+                       "Entrena con `python -m src.training.train_classic`.")
 
     cnn_path = config.CHECKPOINTS / config.APP_CNN_CHECKPOINT
     if include_cnn and not cnn_path.is_file():
@@ -229,6 +260,14 @@ def predict_classic(model: ModelHandle, crop_rgb: np.ndarray, mask: np.ndarray) 
     scores = np.asarray(estimator.decision_function(features)[0], dtype=float)
     scores = np.exp(scores - scores.max())
     return _ordered_probabilities(estimator.classes_, scores / scores.sum())
+
+
+def predict_product(model: ModelHandle, crop_rgb: np.ndarray, mask: np.ndarray) -> dict[str, float]:
+    """Probabilidad de cada fruta, ordenadas de mayor a menor."""
+    features = extract_classic_features_from_arrays(crop_rgb, mask)[None, :]
+    probabilities = model.estimator.predict_proba(features)[0]
+    pairs = sorted(zip(model.estimator.classes_, probabilities), key=lambda kv: -kv[1])
+    return {str(label): float(value) for label, value in pairs}
 
 
 def predict_cnn(model: ModelHandle, crop_rgb: np.ndarray, mask: np.ndarray) -> dict[str, float]:
@@ -335,8 +374,17 @@ def analyze_image(image_bgr: np.ndarray | None, models: list[ModelHandle]) -> An
     masked_rgb = crop_rgb * (mask > 127)[..., None].astype(np.uint8)
     d_norm = float(result["d_norm"])
 
+    product_probabilities = {}
+    for model in models:
+        if model.kind == "product":
+            product_probabilities = predict_product(model, crop_rgb, mask)
+    product = next(iter(product_probabilities), None)
+    product_confident = bool(product and product_probabilities[product] >= config.APP_MIN_PRODUCT_CONFIDENCE)
+
     predictions = []
     for model in models:
+        if model.kind == "product":
+            continue
         predictor = predict_cnn if model.kind == "cnn" else predict_classic
         probabilities = predictor(model, crop_rgb, mask)
         label = max(probabilities, key=probabilities.get)
@@ -347,4 +395,5 @@ def analyze_image(image_bgr: np.ndarray | None, models: list[ModelHandle]) -> An
         ))
     final, note = final_decision(predictions)
     return Analysis(status, True, None, d_norm, segmentation.size_category(d_norm),
-                    overlay, crop_rgb, masked_rgb, predictions, final, note)
+                    overlay, crop_rgb, masked_rgb, predictions, final, note,
+                    product, product_probabilities, product_confident)

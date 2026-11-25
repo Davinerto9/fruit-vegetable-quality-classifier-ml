@@ -1,8 +1,9 @@
 """
 Audita checkpoints en validation; permite una evaluación final protegida en test.
 
-Por defecto evalúa los candidatos del split v2 por ráfagas (logística, SVM, RF de rejilla,
-CNN E3b y el ensamble RF + CNN con el peso fijo de config.APP_ENSEMBLE_CNN_WEIGHT).
+Por defecto evalúa los modelos del split v3 (docs/plan_simple.md): logística, SVM y Random
+Forest de calidad, la CNN, el ensamble RF + CNN con el peso fijo de
+config.APP_ENSEMBLE_CNN_WEIGHT y el Random Forest de fruta.
 
 Uso:
     python -m src.evaluation.model_audit                         # validation v2
@@ -213,7 +214,8 @@ def _class_source_support(rows):
 
 
 def run(partition: str, split_path: Path, batch_size: int, confirm_final_test: bool,
-        checkpoints: dict[str, Path], cnn_weight: float, tag: str):
+        checkpoints: dict[str, Path], cnn_weight: float, tag: str,
+        product_checkpoint: Path | None = None):
     """
     Evalúa los checkpoints en la partición indicada y escribe <stem>_<tag>_*.
 
@@ -221,6 +223,7 @@ def run(partition: str, split_path: Path, batch_size: int, confirm_final_test: b
         checkpoints: rutas con claves logistic_regression, svm_linear, random_forest y cnn_rgb.
         cnn_weight: peso de la CNN en el ensamble (fijado antes de evaluar).
         tag: sufijo de las salidas, para no sobrescribir las auditorías de otros splits.
+        product_checkpoint: Random Forest de fruta (src.training.train_classic), opcional.
     """
     is_test = partition == "test"
     freeze_path = config.RESULTS / "pretest_freeze.sha256"
@@ -229,9 +232,12 @@ def run(partition: str, split_path: Path, batch_size: int, confirm_final_test: b
         if not confirm_final_test:
             raise ValueError("Test requiere --confirm-final-test después del freeze.")
         _verify_freeze(freeze_path)
-        _require_frozen(freeze_path, [split_path, *checkpoints.values()])
+        _require_frozen(freeze_path, [split_path, *checkpoints.values(),
+                                      *([product_checkpoint] if product_checkpoint else [])])
 
-    missing_checkpoints = [str(path) for path in checkpoints.values() if not path.is_file()]
+    missing_checkpoints = [str(path) for path in [*checkpoints.values(),
+                                                  *([product_checkpoint] if product_checkpoint else [])]
+                           if not path.is_file()]
     if missing_checkpoints:
         raise FileNotFoundError("Faltan checkpoints: " + ", ".join(missing_checkpoints))
     try:
@@ -242,6 +248,7 @@ def run(partition: str, split_path: Path, batch_size: int, confirm_final_test: b
     svm = _classic(checkpoints["svm_linear"])
     random_forest = _classic(checkpoints["random_forest"])
     cnn = tf.keras.models.load_model(checkpoints["cnn_rgb"], compile=False)
+    product_model = _classic(product_checkpoint) if product_checkpoint else None
 
     # Todo lo que puede fallar ya se cargó: recién ahora se consume el acceso a test.
     if is_test:
@@ -278,6 +285,20 @@ def run(partition: str, split_path: Path, batch_size: int, confirm_final_test: b
         "cnn_rgb": labels[p_cnn.argmax(axis=1)],
         "ensemble": labels[p_ensemble.argmax(axis=1)],
     }
+
+    product_metrics = None
+    if product_model is not None:
+        from sklearn.metrics import accuracy_score
+        y_product = np.asarray([row["product"] for row in rows], dtype=str)
+        product_pred = product_model.predict(X).astype(str)
+        product_labels = sorted(set(y_product) | set(product_pred))
+        product_metrics = {
+            "accuracy": float(accuracy_score(y_product, product_pred)),
+            "f1_macro": float(f1_score(y_product, product_pred, labels=product_labels,
+                                       average="macro", zero_division=0)),
+            "labels": product_labels,
+            "confusion_matrix": confusion_matrix(y_product, product_pred, labels=product_labels).tolist(),
+        }
 
     metrics = {}
     for name, prediction in predictions.items():
@@ -358,6 +379,7 @@ def run(partition: str, split_path: Path, batch_size: int, confirm_final_test: b
         "checkpoints": {name: {"path": str(path), "sha256": _digest(path)}
                         for name, path in checkpoints.items()},
         "ensemble_cnn_weight": cnn_weight,
+        "product": product_metrics,
     }
     result_path.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n",
                            encoding="utf-8")
@@ -367,6 +389,8 @@ def run(partition: str, split_path: Path, batch_size: int, confirm_final_test: b
         overall = item["overall"]
         print(f"{name}: F1 macro={overall['f1_macro_all_classes']:.4f}; "
               f"balanced accuracy={overall['balanced_accuracy']:.4f}")
+    if product_metrics:
+        print(f"fruta: accuracy={product_metrics['accuracy']:.4f}; F1 macro={product_metrics['f1_macro']:.4f}")
     print(f"RF/CNN error overlap: {result['rf_cnn_pair_status_counts']}; "
           f"Jaccard={result['rf_cnn_error_jaccard']}")
     print(f"Resumen: {result_path}\nPredicciones: {prediction_path}\nErrores: {errors_path}")
@@ -376,19 +400,21 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--partition", choices=("val", "test"), default="val")
-    parser.add_argument("--split", type=Path, default=config.CROPS_DIR / "splits_v2_burst.csv")
+    parser.add_argument("--split", type=Path, default=config.CROPS_DIR / "splits_v3_week.csv")
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--confirm-final-test", action="store_true")
     parser.add_argument("--logistic", type=Path,
-                        default=config.CHECKPOINTS / "logistic_baseline_v2_burst.joblib")
-    parser.add_argument("--svm", type=Path, default=config.CHECKPOINTS / "svm_v2_burst.joblib")
+                        default=config.CHECKPOINTS / "logistic_regression_v3_week.joblib")
+    parser.add_argument("--svm", type=Path, default=config.CHECKPOINTS / "svm_linear_v3_week.joblib")
     parser.add_argument("--rf", type=Path, default=config.CHECKPOINTS / config.APP_RF_CHECKPOINT)
     parser.add_argument("--cnn", type=Path, default=config.CHECKPOINTS / config.APP_CNN_CHECKPOINT)
     parser.add_argument("--cnn-weight", type=float, default=config.APP_ENSEMBLE_CNN_WEIGHT,
                         help="Peso de la CNN en el ensamble; fijarlo antes de evaluar.")
-    parser.add_argument("--tag", default="v2_burst", help="Sufijo de los archivos de salida.")
+    parser.add_argument("--tag", default="v3_week", help="Sufijo de los archivos de salida.")
+    parser.add_argument("--product", type=Path, default=config.CHECKPOINTS / config.APP_PRODUCT_CHECKPOINT,
+                        help="Random Forest de fruta (train_classic), p. ej. product_rf_v3_week.joblib.")
     args = parser.parse_args()
     run(args.partition, args.split, args.batch_size, args.confirm_final_test,
         {"logistic_regression": args.logistic, "svm_linear": args.svm,
          "random_forest": args.rf, "cnn_rgb": args.cnn},
-        args.cnn_weight, args.tag)
+        args.cnn_weight, args.tag, args.product)
