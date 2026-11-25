@@ -28,3 +28,6 @@ Thumbs.db
 # Credenciales
 .env
 kaggle.json
+
+# Conjunto externo (fotos del pool de la clase): fuera de Git
+data/external/
