@@ -1,0 +1,16 @@
+logistic_regression: val F1=0.7140 recall_bad=0.789 bad->good=165 F1_regular=0.5901 train F1=0.7400 gap=0.0260 | agrifreshnet:0.6163(n=1916,g=727,good/regular/bad) own:0.0000(n=4,g=3,good/bad) ryandpark:0.8710(n=1875,g=122,good/bad)
+svm_linear: val F1=0.7169 recall_bad=0.820 bad->good=173 F1_regular=0.5732 train F1=0.7366 gap=0.0197 | agrifreshnet:0.6278(n=1916,g=727,good/regular/bad) own:0.0000(n=4,g=3,good/bad) ryandpark:0.8805(n=1875,g=122,good/bad)
+random_forest: val F1=0.8402 recall_bad=0.903 bad->good=120 F1_regular=0.7328 train F1=1.0000 gap=0.1598 | agrifreshnet:0.7773(n=1916,g=727,good/regular/bad) own:0.7500(n=4,g=3,good/bad) ryandpark:0.9610(n=1875,g=122,good/bad)
+guardado /mnt/c/Users/damar/Desktop/fruit-vegetable-quality-classifier-ml/experiments/results/classic_eval_v2_burst.json
+v1 val groups by source {'agrifreshnet': 747, 'own': 1, 'ryandpark': 1231}
+  RF by product: {'apple': (0.917, 248), 'banana': (0.898, 344), 'bitter_melon': (0.839, 78), 'cucumber': (0.8, 57), 'eggplant': (0.57, 88), 'guava': (0.97, 172), 'lime': (0.991, 185), 'orange': (0.94, 356), 'papaya': (0.704, 68), 'pineapple': (0.757, 66), 'pomegranate': (0.99, 161), 'tomato': (0.731, 156)}
+  RF agrifreshnet cm [[552, 43, 25], [145, 501, 59], [95, 77, 506]] bad->good 95
+  RF own cm [[1, 0, 0], [0, 0, 0], [0, 0, 0]] bad->good 0
+  RF ryandpark cm [[754, 0, 30], [0, 0, 0], [19, 0, 750]] bad->good 19
+v2_burst val groups by source {'agrifreshnet': 727, 'own': 3, 'ryandpark': 122}
+  RF by product: {'apple': (0.954, 30), 'banana': (0.899, 107), 'bitter_melon': (0.823, 64), 'cucumber': (0.897, 58), 'eggplant': (0.606, 94), 'guava': (0.911, 19), 'lime': (0.958, 14), 'orange': (0.917, 131), 'papaya': (0.694, 75), 'pineapple': (0.699, 75), 'pomegranate': (0.996, 20), 'tomato': (0.781, 173)}
+  RF agrifreshnet cm [[559, 37, 21], [167, 458, 84], [74, 44, 472]] bad->good 74
+  RF own cm [[1, 2, 0], [0, 0, 0], [0, 0, 1]] bad->good 0
+  RF ryandpark cm [[745, 0, 25], [0, 0, 0], [46, 0, 1059]] bad->good 46
+svm [({'C': 0.1}, 0.6753, 0.0107), ({'C': 1.0}, 0.6754, 0.0108), ({'C': 10.0}, 0.6755, 0.0104)]
+random_forest [({'max_features': 'sqrt', 'min_samples_leaf': 1, 'max_depth': None}, 0.8023, 0.0043), ({'max_features': 'sqrt', 'min_samples_leaf': 2, 'max_depth': None}, 0.8103, 0.0084), ({'max_features': 'sqrt', 'min_samples_leaf': 1, 'max_depth': 32}, 0.8024, 0.0063)]

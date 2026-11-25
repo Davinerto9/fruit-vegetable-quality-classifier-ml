@@ -12,7 +12,7 @@ data/raw/*
 data/processed/index.csv
 data/processed/crops/
 data/processed/pilot-crops/
-data/processed/classic_features.npz
+data/processed/classic_features*.npz
 data/processed/.prepare-*/
 
 # Modelos entrenados (pesados)

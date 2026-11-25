@@ -1,0 +1,7 @@
+v2_burst: train F1=1.0000 val F1=0.8402 F1 regular=0.7328 depth med=29 leaves med=1432
+v2_burst_grid: train F1=0.9931 val F1=0.8569 F1 regular=0.7834 depth med=20 leaves med=818
+Δ F1 (grid − base) global       groups= 852 Δ=+0.0167 IC95=[+0.0053, +0.0283] P(Δ≤0)=0.003
+Δ F1 (grid − base) ryandpark    groups= 122 Δ=-0.0076 IC95=[-0.0184, +0.0019] P(Δ≤0)=0.947
+Δ F1 (grid − base) agrifreshnet groups= 727 Δ=+0.0222 IC95=[+0.0069, +0.0370] P(Δ≤0)=0.003
+v2_burst recall bad 0.903 bad->good 120 regular->good 167 pred regular Kaggle 0
+v2_burst_grid recall bad 0.897 bad->good 121 regular->good 122 pred regular Kaggle 1

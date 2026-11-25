@@ -1,0 +1,670 @@
+{
+  "model": "logistic_regression_baseline",
+  "input": "masked RGB/HSV histograms, LBP texture, and normalized shape descriptors",
+  "feature_count": 359,
+  "feature_cache": "data/processed/classic_features_v2_burst.npz",
+  "split_file": "data/processed/crops/splits_v2_burst.csv",
+  "split_sha256": "b0ac08f52b3871061d17b6629b3ec3815640afd4c93a3cecf3e78bb5eac7abc9",
+  "seed": 42,
+  "scaling": "StandardScaler fit on train only",
+  "class_weight": "balanced, computed by scikit-learn from train labels",
+  "test_used": false,
+  "train": {
+    "n": 16272,
+    "f1_macro": 0.7400472084616941,
+    "balanced_accuracy": 0.7606654182932026,
+    "confusion_matrix": [
+      [
+        5099,
+        1185,
+        561
+      ],
+      [
+        357,
+        2357,
+        335
+      ],
+      [
+        528,
+        977,
+        4873
+      ]
+    ],
+    "confusion_matrix_labels": [
+      "good",
+      "regular",
+      "bad"
+    ],
+    "classification_report": {
+      "good": {
+        "precision": 0.852105614973262,
+        "recall": 0.7449233016800585,
+        "f1-score": 0.7949177644399408,
+        "support": 6845.0
+      },
+      "regular": {
+        "precision": 0.521575569816331,
+        "recall": 0.7730403410954412,
+        "f1-score": 0.6228858350951374,
+        "support": 3049.0
+      },
+      "bad": {
+        "precision": 0.8446871208181661,
+        "recall": 0.7640326121041079,
+        "f1-score": 0.8023380258500041,
+        "support": 6378.0
+      },
+      "accuracy": 0.7576819075712881,
+      "macro avg": {
+        "precision": 0.739456101869253,
+        "recall": 0.7606654182932026,
+        "f1-score": 0.7400472084616941,
+        "support": 16272.0
+      },
+      "weighted avg": {
+        "precision": 0.7872640919026693,
+        "recall": 0.7576819075712881,
+        "f1-score": 0.7655913801418261,
+        "support": 16272.0
+      }
+    }
+  },
+  "validation": {
+    "n": 3795,
+    "f1_macro": 0.7140019542013231,
+    "balanced_accuracy": 0.727386400483892,
+    "confusion_matrix": [
+      [
+        974,
+        271,
+        145
+      ],
+      [
+        124,
+        491,
+        94
+      ],
+      [
+        165,
+        193,
+        1338
+      ]
+    ],
+    "confusion_matrix_labels": [
+      "good",
+      "regular",
+      "bad"
+    ],
+    "classification_report": {
+      "good": {
+        "precision": 0.7711797307996833,
+        "recall": 0.7007194244604317,
+        "f1-score": 0.7342630983791933,
+        "support": 1390.0
+      },
+      "regular": {
+        "precision": 0.5141361256544502,
+        "recall": 0.692524682651622,
+        "f1-score": 0.5901442307692307,
+        "support": 709.0
+      },
+      "bad": {
+        "precision": 0.8484464172479391,
+        "recall": 0.7889150943396226,
+        "f1-score": 0.8175985334555453,
+        "support": 1696.0
+      },
+      "accuracy": 0.7386034255599473,
+      "macro avg": {
+        "precision": 0.7112540912340242,
+        "recall": 0.727386400483892,
+        "f1-score": 0.7140019542013231,
+        "support": 3795.0
+      },
+      "weighted avg": {
+        "precision": 0.7576883959296626,
+        "recall": 0.7386034255599473,
+        "f1-score": 0.7445810485120075,
+        "support": 3795.0
+      }
+    }
+  },
+  "validation_by_source": {
+    "agrifreshnet": {
+      "n": 1916,
+      "scored_classes": [
+        "good",
+        "regular",
+        "bad"
+      ],
+      "class_support": {
+        "good": 617,
+        "regular": 709,
+        "bad": 590
+      },
+      "f1_macro_supported_classes": 0.6163026294797603,
+      "confusion_matrix": [
+        [
+          327,
+          258,
+          32
+        ],
+        [
+          124,
+          491,
+          94
+        ],
+        [
+          60,
+          172,
+          358
+        ]
+      ],
+      "confusion_matrix_labels": [
+        "good",
+        "regular",
+        "bad"
+      ]
+    },
+    "own": {
+      "n": 4,
+      "scored_classes": [
+        "good",
+        "bad"
+      ],
+      "class_support": {
+        "good": 3,
+        "regular": 0,
+        "bad": 1
+      },
+      "f1_macro_supported_classes": 0.0,
+      "confusion_matrix": [
+        [
+          0,
+          3,
+          0
+        ],
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          1,
+          0
+        ]
+      ],
+      "confusion_matrix_labels": [
+        "good",
+        "regular",
+        "bad"
+      ]
+    },
+    "ryandpark": {
+      "n": 1875,
+      "scored_classes": [
+        "good",
+        "bad"
+      ],
+      "class_support": {
+        "good": 770,
+        "regular": 0,
+        "bad": 1105
+      },
+      "f1_macro_supported_classes": 0.8709584271449735,
+      "confusion_matrix": [
+        [
+          647,
+          10,
+          113
+        ],
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          105,
+          20,
+          980
+        ]
+      ],
+      "confusion_matrix_labels": [
+        "good",
+        "regular",
+        "bad"
+      ]
+    }
+  },
+  "validation_by_product": {
+    "apple": {
+      "n": 429,
+      "scored_classes": [
+        "good",
+        "bad"
+      ],
+      "class_support": {
+        "good": 158,
+        "regular": 0,
+        "bad": 271
+      },
+      "f1_macro_supported_classes": 0.8319140747155469,
+      "confusion_matrix": [
+        [
+          116,
+          2,
+          40
+        ],
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          24,
+          0,
+          247
+        ]
+      ],
+      "confusion_matrix_labels": [
+        "good",
+        "regular",
+        "bad"
+      ]
+    },
+    "banana": {
+      "n": 438,
+      "scored_classes": [
+        "good",
+        "regular",
+        "bad"
+      ],
+      "class_support": {
+        "good": 277,
+        "regular": 73,
+        "bad": 88
+      },
+      "f1_macro_supported_classes": 0.7666014125594964,
+      "confusion_matrix": [
+        [
+          222,
+          35,
+          20
+        ],
+        [
+          1,
+          53,
+          19
+        ],
+        [
+          1,
+          6,
+          81
+        ]
+      ],
+      "confusion_matrix_labels": [
+        "good",
+        "regular",
+        "bad"
+      ]
+    },
+    "bitter_melon": {
+      "n": 213,
+      "scored_classes": [
+        "good",
+        "regular",
+        "bad"
+      ],
+      "class_support": {
+        "good": 63,
+        "regular": 90,
+        "bad": 60
+      },
+      "f1_macro_supported_classes": 0.6800527640067248,
+      "confusion_matrix": [
+        [
+          37,
+          26,
+          0
+        ],
+        [
+          17,
+          71,
+          2
+        ],
+        [
+          0,
+          24,
+          36
+        ]
+      ],
+      "confusion_matrix_labels": [
+        "good",
+        "regular",
+        "bad"
+      ]
+    },
+    "cucumber": {
+      "n": 222,
+      "scored_classes": [
+        "good",
+        "regular",
+        "bad"
+      ],
+      "class_support": {
+        "good": 74,
+        "regular": 84,
+        "bad": 64
+      },
+      "f1_macro_supported_classes": 0.6433797312965895,
+      "confusion_matrix": [
+        [
+          23,
+          50,
+          1
+        ],
+        [
+          1,
+          75,
+          8
+        ],
+        [
+          10,
+          5,
+          49
+        ]
+      ],
+      "confusion_matrix_labels": [
+        "good",
+        "regular",
+        "bad"
+      ]
+    },
+    "eggplant": {
+      "n": 263,
+      "scored_classes": [
+        "good",
+        "regular",
+        "bad"
+      ],
+      "class_support": {
+        "good": 74,
+        "regular": 73,
+        "bad": 116
+      },
+      "f1_macro_supported_classes": 0.5248528048279892,
+      "confusion_matrix": [
+        [
+          45,
+          26,
+          3
+        ],
+        [
+          20,
+          40,
+          13
+        ],
+        [
+          24,
+          39,
+          53
+        ]
+      ],
+      "confusion_matrix_labels": [
+        "good",
+        "regular",
+        "bad"
+      ]
+    },
+    "guava": {
+      "n": 214,
+      "scored_classes": [
+        "good",
+        "bad"
+      ],
+      "class_support": {
+        "good": 57,
+        "regular": 0,
+        "bad": 157
+      },
+      "f1_macro_supported_classes": 0.86870925684485,
+      "confusion_matrix": [
+        [
+          53,
+          2,
+          2
+        ],
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          20,
+          1,
+          136
+        ]
+      ],
+      "confusion_matrix_labels": [
+        "good",
+        "regular",
+        "bad"
+      ]
+    },
+    "lime": {
+      "n": 207,
+      "scored_classes": [
+        "good",
+        "bad"
+      ],
+      "class_support": {
+        "good": 33,
+        "regular": 0,
+        "bad": 174
+      },
+      "f1_macro_supported_classes": 0.9122509537939805,
+      "confusion_matrix": [
+        [
+          33,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          11,
+          0,
+          163
+        ]
+      ],
+      "confusion_matrix_labels": [
+        "good",
+        "regular",
+        "bad"
+      ]
+    },
+    "orange": {
+      "n": 650,
+      "scored_classes": [
+        "good",
+        "regular",
+        "bad"
+      ],
+      "class_support": {
+        "good": 305,
+        "regular": 84,
+        "bad": 261
+      },
+      "f1_macro_supported_classes": 0.7047491064829693,
+      "confusion_matrix": [
+        [
+          231,
+          23,
+          51
+        ],
+        [
+          9,
+          66,
+          9
+        ],
+        [
+          47,
+          38,
+          176
+        ]
+      ],
+      "confusion_matrix_labels": [
+        "good",
+        "regular",
+        "bad"
+      ]
+    },
+    "papaya": {
+      "n": 316,
+      "scored_classes": [
+        "good",
+        "regular",
+        "bad"
+      ],
+      "class_support": {
+        "good": 105,
+        "regular": 144,
+        "bad": 67
+      },
+      "f1_macro_supported_classes": 0.43971620415617263,
+      "confusion_matrix": [
+        [
+          43,
+          60,
+          2
+        ],
+        [
+          54,
+          90,
+          0
+        ],
+        [
+          11,
+          40,
+          16
+        ]
+      ],
+      "confusion_matrix_labels": [
+        "good",
+        "regular",
+        "bad"
+      ]
+    },
+    "pineapple": {
+      "n": 200,
+      "scored_classes": [
+        "good",
+        "regular",
+        "bad"
+      ],
+      "class_support": {
+        "good": 67,
+        "regular": 68,
+        "bad": 65
+      },
+      "f1_macro_supported_classes": 0.5828286691740506,
+      "confusion_matrix": [
+        [
+          37,
+          22,
+          8
+        ],
+        [
+          3,
+          26,
+          39
+        ],
+        [
+          1,
+          10,
+          54
+        ]
+      ],
+      "confusion_matrix_labels": [
+        "good",
+        "regular",
+        "bad"
+      ]
+    },
+    "pomegranate": {
+      "n": 369,
+      "scored_classes": [
+        "good",
+        "bad"
+      ],
+      "class_support": {
+        "good": 90,
+        "regular": 0,
+        "bad": 279
+      },
+      "f1_macro_supported_classes": 0.9401482238691541,
+      "confusion_matrix": [
+        [
+          80,
+          0,
+          10
+        ],
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          5,
+          4,
+          270
+        ]
+      ],
+      "confusion_matrix_labels": [
+        "good",
+        "regular",
+        "bad"
+      ]
+    },
+    "tomato": {
+      "n": 274,
+      "scored_classes": [
+        "good",
+        "regular",
+        "bad"
+      ],
+      "class_support": {
+        "good": 87,
+        "regular": 93,
+        "bad": 94
+      },
+      "f1_macro_supported_classes": 0.6617236859708471,
+      "confusion_matrix": [
+        [
+          54,
+          25,
+          8
+        ],
+        [
+          19,
+          70,
+          4
+        ],
+        [
+          11,
+          26,
+          57
+        ]
+      ],
+      "confusion_matrix_labels": [
+        "good",
+        "regular",
+        "bad"
+      ]
+    }
+  }
+}

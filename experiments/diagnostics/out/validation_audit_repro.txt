@@ -1,0 +1,20 @@
+Reproducción de validation — 2026-11-24
+commit: ad0b21febbe1cae6e9610928ed28a8f97b3c943f (main, sin cambios locales en código)
+entorno: WSL Ubuntu, ~/.venvs/fruit-quality, Python 3.11.18, numpy 2.4.6, TensorFlow 2.21.0 (CPU; GPU no visible)
+scikit-learn: 1.7.2 instalado aparte (pip --target ~/.venvs/sk172, PYTHONPATH); el venv sigue en 1.9.1
+carga de checkpoints con -W error::UserWarning: sin InconsistentVersionWarning
+sha256:
+  5b37044ba55c4769e0f2d503222ed3d7104293d24e9484a127d2691171b223e3  data/processed/crops/splits.csv
+  4a071accabdd6f79c580e2c4ec1d83b72dedccf6f0732682b4c9dfcf778fcf0e  experiments/checkpoints/cnn_rgb.keras
+  78917fed649f4cd3d45edadfffc0dc60d8b06460bc7e2d15d4aca8f492b61224  experiments/checkpoints/logistic_baseline.joblib
+  a1bf12a7c6f968c2ceada5ab25fe76137469cad5c7a30f9cf27821da9583f591  experiments/checkpoints/random_forest.joblib
+  f748cafc357815c13b8cacbdfb201b70f1a4615e4e7f53fb4e147f086df450b1  experiments/checkpoints/svm.joblib
+comando: PYTHONPATH=~/.venvs/sk172 python -m src.evaluation.model_audit --partition val --batch-size 64   (3 min 32 s)
+resultado:
+  Partición=val; filas=3557; grupos=1979; test usado=False
+  logistic_regression: F1 macro=0.6845; balanced accuracy=0.7010
+  svm_linear: F1 macro=0.6978; balanced accuracy=0.7022
+  random_forest: F1 macro=0.8424; balanced accuracy=0.8363
+  cnn_rgb: F1 macro=0.7988; balanced accuracy=0.8139
+  RF/CNN: both_correct 2686, rf_only_wrong 210, cnn_only_wrong 378, both_wrong 283; Jaccard 0.3249
+validation_audit.json, validation_predictions.csv y validation_error_cases.csv: idénticos byte a byte a los versionados.

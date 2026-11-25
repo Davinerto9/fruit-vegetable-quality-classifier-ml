@@ -1,0 +1,10 @@
+A train=Agri -> Kaggle val (all products): n=1553 F1(supported)=0.5496 cm=[[328, 76, 380], [0, 0, 0], [97, 229, 443]]
+    AUC P(good) good-vs-bad: 0.7216
+A train=Agri -> Kaggle val banana+orange: n=526 F1(supported)=0.4767 cm=[[146, 42, 130], [0, 0, 0], [34, 98, 76]]
+    AUC P(good) good-vs-bad: 0.7087
+A train=Agri -> Agri val (in-domain): n=2003 F1(supported)=0.8033 cm=[[552, 53, 15], [136, 528, 41], [54, 97, 527]]
+    AUC P(good) good-vs-bad: 0.9796
+B train=Kaggle -> Agri val good+bad: n=1298 F1(good,bad)=0.6359 AUC=0.7525 cm=[[534, 86], [372, 306]]
+    mean P(good) under Kaggle-only model: agri good 0.689 agri regular 0.613 agri bad 0.526
+B train=Kaggle -> Agri val banana+orange good+bad: n=354 F1(good,bad)=0.7598 AUC=0.8435 cm=[[137, 44], [41, 132]]
+B train=Kaggle -> Kaggle val (in-domain): n=1553 F1(good,bad)=0.9742 AUC=0.9946 cm=[[764, 20], [20, 749]]

@@ -1,0 +1,108 @@
+
+real	11m21.675s
+user	4m37.015s
+sys	1m30.320s
+efore absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1795567257.157477     823 port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1795567259.109875     823 port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+/home/damar/.venvs/fruit-quality/lib/python3.11/site-packages/keras/src/trainers/epoch_iterator.py:74: UserWarning: `shuffle=True` was passed, but will be ignored since the data `x` was provided as a tf.data.Dataset. The Dataset is expected to already be shuffled (via `.shuffle(buffer_size)`).
+  self.data_adapter = data_adapters.get_data_adapter(
+Epoch 1/40
+
+
+
+Epoch 2/40
+
+
+
+Epoch 3/40
+
+
+
+Epoch 4/40
+
+Epoch 4: val_loss did not improve from 0.71606
+
+Epoch 5/40
+
+
+
+Epoch 6/40
+
+Epoch 6: val_loss did not improve from 0.69040
+
+Epoch 7/40
+
+Epoch 7: val_loss did not improve from 0.69040
+
+Epoch 8/40
+
+
+
+Epoch 9/40
+
+Epoch 9: val_loss did not improve from 0.68770
+
+Epoch 10/40
+
+Epoch 10: val_loss did not improve from 0.68770
+
+Epoch 11/40
+
+Epoch 11: val_loss did not improve from 0.68770
+
+Epoch 12/40
+
+
+
+Epoch 13/40
+
+
+
+Epoch 14/40
+
+
+
+Epoch 15/40
+
+
+
+Epoch 16/40
+
+
+
+Epoch 17/40
+
+
+
+Epoch 18/40
+
+Epoch 18: val_loss did not improve from 0.51474
+
+Epoch 19/40
+
+Epoch 19: val_loss did not improve from 0.51474
+
+Epoch 20/40
+
+Epoch 20: val_loss did not improve from 0.51474
+
+Epoch 21/40
+
+Epoch 21: val_loss did not improve from 0.51474
+
+Epoch 22/40
+
+Epoch 22: val_loss did not improve from 0.51474
+
+Epoch 23/40
+
+Epoch 23: val_loss did not improve from 0.51474
+
+Epoch 23: early stopping
+Restoring model weights from the end of the best epoch: 17.
+CNN validation F1 macro=0.7478; test usado=False
+4a071accabdd6f79c580e2c4ec1d83b72dedccf6f0732682b4c9dfcf778fcf0e  experiments/checkpoints/cnn_rgb.keras
+0b7c32b59b0a7cd2ccc89d0c8ad30cff830b0b0f58be254d998fb086b2115cd9  experiments/checkpoints/cnn_rgb_v2_burst_baseline.keras
+ALLDONE

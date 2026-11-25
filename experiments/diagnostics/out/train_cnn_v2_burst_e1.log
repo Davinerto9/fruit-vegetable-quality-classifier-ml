@@ -1,0 +1,292 @@
+
+real	30m0.188s
+user	11m47.856s
+sys	3m26.399s
+efore absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1795568116.246324     477 port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1795568119.477048     477 port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+  self.data_adapter = data_adapters.get_data_adapter(
+Epoch 1/100
+
+
+
+Epoch 2/100
+
+
+
+Epoch 3/100
+
+
+
+Epoch 4/100
+
+Epoch 4: val_loss did not improve from 0.71606
+
+Epoch 5/100
+
+
+
+Epoch 6/100
+
+Epoch 6: val_loss did not improve from 0.69040
+
+Epoch 7/100
+
+Epoch 7: val_loss did not improve from 0.69040
+
+Epoch 8/100
+
+
+
+Epoch 9/100
+
+Epoch 9: val_loss did not improve from 0.68770
+
+Epoch 10/100
+
+Epoch 10: val_loss did not improve from 0.68770
+
+Epoch 11/100
+
+Epoch 11: val_loss did not improve from 0.68770
+
+Epoch 12/100
+
+
+
+Epoch 13/100
+
+
+
+Epoch 14/100
+
+
+
+Epoch 15/100
+
+
+
+Epoch 16/100
+
+
+
+Epoch 17/100
+
+
+
+Epoch 18/100
+
+Epoch 18: val_loss did not improve from 0.51474
+
+Epoch 19/100
+
+Epoch 19: val_loss did not improve from 0.51474
+
+Epoch 20/100
+
+Epoch 20: val_loss did not improve from 0.51474
+
+Epoch 21/100
+
+Epoch 21: val_loss did not improve from 0.51474
+
+Epoch 21: ReduceLROnPlateau reducing learning rate to 0.0005000000237487257.
+
+Epoch 22/100
+
+
+
+Epoch 23/100
+
+Epoch 23: val_loss did not improve from 0.50132
+
+Epoch 24/100
+
+Epoch 24: val_loss did not improve from 0.50132
+
+Epoch 25/100
+
+Epoch 25: val_loss did not improve from 0.50132
+
+Epoch 26/100
+
+Epoch 26: val_loss did not improve from 0.50132
+
+Epoch 26: ReduceLROnPlateau reducing learning rate to 0.0002500000118743628.
+
+Epoch 27/100
+
+
+
+Epoch 28/100
+
+
+
+Epoch 29/100
+
+Epoch 29: val_loss did not improve from 0.45467
+
+Epoch 30/100
+
+Epoch 30: val_loss did not improve from 0.45467
+
+Epoch 31/100
+
+Epoch 31: val_loss did not improve from 0.45467
+
+Epoch 32/100
+
+
+
+Epoch 33/100
+
+Epoch 33: val_loss did not improve from 0.44187
+
+Epoch 34/100
+
+
+
+Epoch 35/100
+
+Epoch 35: val_loss did not improve from 0.42622
+
+Epoch 36/100
+
+Epoch 36: val_loss did not improve from 0.42622
+
+Epoch 37/100
+
+Epoch 37: val_loss did not improve from 0.42622
+
+Epoch 38/100
+
+Epoch 38: val_loss did not improve from 0.42622
+
+Epoch 38: ReduceLROnPlateau reducing learning rate to 0.0001250000059371814.
+
+Epoch 39/100
+
+Epoch 39: val_loss did not improve from 0.42622
+
+Epoch 40/100
+
+
+
+Epoch 41/100
+
+Epoch 41: val_loss did not improve from 0.42405
+
+Epoch 42/100
+
+Epoch 42: val_loss did not improve from 0.42405
+
+Epoch 43/100
+
+Epoch 43: val_loss did not improve from 0.42405
+
+Epoch 44/100
+
+Epoch 44: val_loss did not improve from 0.42405
+
+Epoch 44: ReduceLROnPlateau reducing learning rate to 6.25000029685907e-05.
+
+Epoch 45/100
+
+Epoch 45: val_loss did not improve from 0.42405
+
+Epoch 46/100
+
+
+
+Epoch 47/100
+
+Epoch 47: val_loss did not improve from 0.41977
+
+Epoch 48/100
+
+Epoch 48: val_loss did not improve from 0.41977
+
+Epoch 49/100
+
+Epoch 49: val_loss did not improve from 0.41977
+
+Epoch 50/100
+
+
+
+Epoch 51/100
+
+Epoch 51: val_loss did not improve from 0.41555
+
+Epoch 52/100
+
+
+
+Epoch 53/100
+
+Epoch 53: val_loss did not improve from 0.41249
+
+Epoch 54/100
+
+Epoch 54: val_loss did not improve from 0.41249
+
+Epoch 55/100
+
+Epoch 55: val_loss did not improve from 0.41249
+
+Epoch 56/100
+
+Epoch 56: val_loss did not improve from 0.41249
+
+Epoch 56: ReduceLROnPlateau reducing learning rate to 3.125000148429535e-05.
+
+Epoch 57/100
+
+Epoch 57: val_loss did not improve from 0.41249
+
+Epoch 58/100
+
+Epoch 58: val_loss did not improve from 0.41249
+
+Epoch 59/100
+
+Epoch 59: val_loss did not improve from 0.41249
+
+Epoch 60/100
+
+Epoch 60: val_loss did not improve from 0.41249
+
+Epoch 60: ReduceLROnPlateau reducing learning rate to 1.5625000742147677e-05.
+
+Epoch 61/100
+
+Epoch 61: val_loss did not improve from 0.41249
+
+Epoch 62/100
+
+Epoch 62: val_loss did not improve from 0.41249
+
+Epoch 63/100
+
+Epoch 63: val_loss did not improve from 0.41249
+
+Epoch 64/100
+
+Epoch 64: val_loss did not improve from 0.41249
+
+Epoch 64: ReduceLROnPlateau reducing learning rate to 1e-05.
+
+Epoch 64: early stopping
+Restoring model weights from the end of the best epoch: 52.
+CNN validation F1 macro=0.7973; test usado=False
+cnn: F1=0.7973 recall_bad=0.870 bad->good=135 F1_regular=0.7131 regular->good=97 pred_regular_kaggle=1 | agrifreshnet=0.7292 own=0.2500 ryandpark=0.9077
+rf: F1=0.8569 recall_bad=0.897 bad->good=121 F1_regular=0.7834 regular->good=122 pred_regular_kaggle=1 | agrifreshnet=0.7994 own=0.2500 ryandpark=0.9535
+Δ(CNN−RF) global: -0.0596 IC95=[-0.0846, -0.0343]
+Δ(CNN−RF) ryandpark: -0.0458 IC95=[-0.0856, -0.0126]
+Δ(CNN−RF) agrifreshnet: -0.0703 IC95=[-0.1032, -0.0375]
+pair status {'both_correct': 2915, 'rf_only_wrong': 187, 'cnn_only_wrong': 406, 'both_wrong': 287}
+4a071accabdd6f79c580e2c4ec1d83b72dedccf6f0732682b4c9dfcf778fcf0e  experiments/checkpoints/cnn_rgb.keras
+0b7c32b59b0a7cd2ccc89d0c8ad30cff830b0b0f58be254d998fb086b2115cd9  experiments/checkpoints/cnn_rgb_v2_burst_baseline.keras
+7ac21ec7275c9e375d0f2fb44fc49e5d6ecb44802cefdcd7a270a72ce22d0417  experiments/checkpoints/cnn_rgb_v2_burst_e1.keras
+ALLDONE

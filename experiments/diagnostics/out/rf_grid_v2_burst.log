@@ -1,0 +1,41 @@
+
+real	20m6.547s
+user	219m29.802s
+sys	2m8.113s
+ 1, 'max_depth': None, 'max_features': 'sqrt'}: CV F1=0.8023±0.0043 bad->good=607 gap=0.198 depth=31
+[2/30] {'min_samples_leaf': 1, 'max_depth': None, 'max_features': 0.1}: CV F1=0.8111±0.0080 bad->good=605 gap=0.189 depth=32
+[3/30] {'min_samples_leaf': 1, 'max_depth': 20, 'max_features': 'sqrt'}: CV F1=0.8035±0.0052 bad->good=625 gap=0.197 depth=20
+[4/30] {'min_samples_leaf': 1, 'max_depth': 20, 'max_features': 0.1}: CV F1=0.8143±0.0085 bad->good=598 gap=0.186 depth=20
+[5/30] {'min_samples_leaf': 1, 'max_depth': 12, 'max_features': 'sqrt'}: CV F1=0.7994±0.0052 bad->good=580 gap=0.189 depth=12
+[6/30] {'min_samples_leaf': 1, 'max_depth': 12, 'max_features': 0.1}: CV F1=0.8093±0.0061 bad->good=560 gap=0.181 depth=12
+[7/30] {'min_samples_leaf': 2, 'max_depth': None, 'max_features': 'sqrt'}: CV F1=0.8103±0.0084 bad->good=595 gap=0.190 depth=27
+[8/30] {'min_samples_leaf': 2, 'max_depth': None, 'max_features': 0.1}: CV F1=0.8185±0.0070 bad->good=584 gap=0.181 depth=29
+[9/30] {'min_samples_leaf': 2, 'max_depth': 20, 'max_features': 'sqrt'}: CV F1=0.8115±0.0093 bad->good=582 gap=0.188 depth=20
+[10/30] {'min_samples_leaf': 2, 'max_depth': 20, 'max_features': 0.1}: CV F1=0.8178±0.0070 bad->good=599 gap=0.182 depth=20
+[11/30] {'min_samples_leaf': 2, 'max_depth': 12, 'max_features': 'sqrt'}: CV F1=0.7974±0.0091 bad->good=566 gap=0.188 depth=12
+[12/30] {'min_samples_leaf': 2, 'max_depth': 12, 'max_features': 0.1}: CV F1=0.8074±0.0099 bad->good=558 gap=0.179 depth=12
+[13/30] {'min_samples_leaf': 5, 'max_depth': None, 'max_features': 'sqrt'}: CV F1=0.8120±0.0068 bad->good=584 gap=0.183 depth=23
+[14/30] {'min_samples_leaf': 5, 'max_depth': None, 'max_features': 0.1}: CV F1=0.8161±0.0073 bad->good=578 gap=0.178 depth=23
+[15/30] {'min_samples_leaf': 5, 'max_depth': 20, 'max_features': 'sqrt'}: CV F1=0.8116±0.0083 bad->good=587 gap=0.182 depth=20
+[16/30] {'min_samples_leaf': 5, 'max_depth': 20, 'max_features': 0.1}: CV F1=0.8161±0.0090 bad->good=563 gap=0.178 depth=20
+[17/30] {'min_samples_leaf': 5, 'max_depth': 12, 'max_features': 'sqrt'}: CV F1=0.7979±0.0130 bad->good=579 gap=0.175 depth=12
+[18/30] {'min_samples_leaf': 5, 'max_depth': 12, 'max_features': 0.1}: CV F1=0.8078±0.0110 bad->good=540 gap=0.168 depth=12
+[19/30] {'min_samples_leaf': 10, 'max_depth': None, 'max_features': 'sqrt'}: CV F1=0.7995±0.0103 bad->good=582 gap=0.166 depth=19
+[20/30] {'min_samples_leaf': 10, 'max_depth': None, 'max_features': 0.1}: CV F1=0.8046±0.0073 bad->good=584 gap=0.164 depth=20
+[21/30] {'min_samples_leaf': 10, 'max_depth': 20, 'max_features': 'sqrt'}: CV F1=0.7982±0.0108 bad->good=592 gap=0.167 depth=19
+[22/30] {'min_samples_leaf': 10, 'max_depth': 20, 'max_features': 0.1}: CV F1=0.8041±0.0082 bad->good=589 gap=0.164 depth=19
+[23/30] {'min_samples_leaf': 10, 'max_depth': 12, 'max_features': 'sqrt'}: CV F1=0.7893±0.0149 bad->good=567 gap=0.156 depth=12
+[24/30] {'min_samples_leaf': 10, 'max_depth': 12, 'max_features': 0.1}: CV F1=0.7993±0.0118 bad->good=553 gap=0.152 depth=12
+[25/30] {'min_samples_leaf': 20, 'max_depth': None, 'max_features': 'sqrt'}: CV F1=0.7794±0.0147 bad->good=568 gap=0.128 depth=17
+[26/30] {'min_samples_leaf': 20, 'max_depth': None, 'max_features': 0.1}: CV F1=0.7914±0.0080 bad->good=571 gap=0.125 depth=16
+[27/30] {'min_samples_leaf': 20, 'max_depth': 20, 'max_features': 'sqrt'}: CV F1=0.7792±0.0149 bad->good=568 gap=0.128 depth=17
+[28/30] {'min_samples_leaf': 20, 'max_depth': 20, 'max_features': 0.1}: CV F1=0.7909±0.0075 bad->good=565 gap=0.126 depth=16
+[29/30] {'min_samples_leaf': 20, 'max_depth': 12, 'max_features': 'sqrt'}: CV F1=0.7737±0.0150 bad->good=580 gap=0.123 depth=12
+[30/30] {'min_samples_leaf': 20, 'max_depth': 12, 'max_features': 0.1}: CV F1=0.7880±0.0100 bad->good=544 gap=0.120 depth=12
+Mejor CV: {'min_samples_leaf': 2, 'max_depth': None, 'max_features': 0.1} (0.8185); 8 dentro de 1 sd; elegida: {'min_samples_leaf': 5, 'max_depth': 20, 'max_features': 0.1}
+n_estimators=400: CV F1=0.8186±0.0078
+Elegida {'min_samples_leaf': 5, 'max_depth': 20, 'max_features': 0.1} n_estimators=160; val F1=0.8569 recall_bad=0.897 bad->good=121 Kaggle=0.9535 Agri=0.7994; test usado=False
+a1bf12a7c6f968c2ceada5ab25fe76137469cad5c7a30f9cf27821da9583f591  experiments/checkpoints/random_forest.joblib
+2e3713c1e3c61aca890d3524f1983a4f2aae873e1b4b0d4874f61c6cf6de487f  experiments/checkpoints/random_forest_v2_burst.joblib
+7f5290bd36a77dd14f63a6c6f9dcdedacf84f1753b5883ff8b813dc5f36df11a  experiments/checkpoints/random_forest_v2_burst_grid.joblib
+ALLDONE

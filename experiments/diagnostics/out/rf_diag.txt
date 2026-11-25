@@ -1,0 +1,65 @@
+X (23687, 359) train 16456 val 3557
+params {'bootstrap': True, 'class_weight': 'balanced_subsample', 'max_depth': None, 'max_features': 'sqrt', 'min_samples_leaf': 2, 'min_samples_split': 2, 'n_estimators': 160, 'oob_score': False}
+tree depth min/med/max 23 30.0 44 leaves med 1460.0 train rows 16456
+selected {'max_features': 'sqrt', 'min_samples_leaf': 2, 'max_depth': None} 0.8196432110781723
+train: n=16456 F1(all3)=0.9999 F1(supported ['good', 'regular', 'bad'])=0.9999 cm=[[6970, 0, 0], [0, 3133, 0], [1, 0, 6352]]
+  train/ryandpark: n=7408 F1(all3)=0.6666 F1(supported ['good', 'bad'])=0.9999 cm=[[3801, 0, 0], [0, 0, 0], [1, 0, 3606]]
+  train/agrifreshnet: n=9016 F1(all3)=1.0000 F1(supported ['good', 'regular', 'bad'])=1.0000 cm=[[3149, 0, 0], [0, 3122, 0], [0, 0, 2745]]
+  train/own: n=32 F1(all3)=1.0000 F1(supported ['good', 'regular', 'bad'])=1.0000 cm=[[20, 0, 0], [0, 11, 0], [0, 0, 1]]
+val: n=3557 F1(all3)=0.8424 F1(supported ['good', 'regular', 'bad'])=0.8424 cm=[[1307, 43, 55], [145, 501, 59], [114, 77, 1256]]
+  val/ryandpark: n=1553 F1(all3)=0.6456 F1(supported ['good', 'bad'])=0.9684 cm=[[754, 0, 30], [0, 0, 0], [19, 0, 750]]
+  val/agrifreshnet: n=2003 F1(all3)=0.7785 F1(supported ['good', 'regular', 'bad'])=0.7785 cm=[[552, 43, 25], [145, 501, 59], [95, 77, 506]]
+  val/own: n=1 F1(all3)=0.3333 F1(supported ['good'])=1.0000 cm=[[1, 0, 0], [0, 0, 0], [0, 0, 0]]
+val kaggle predicted regular: 0
+val agri pred counts {'good': 792, 'regular': 621, 'bad': 590}
+banana ryandpark n 250 pred {'good': 165, 'bad': 85} true {'good': 162, 'bad': 88}
+banana agrifreshnet n 271 pred {'bad': 114, 'regular': 82, 'good': 75} true {'regular': 97, 'bad': 93, 'good': 81}
+orange ryandpark n 276 pred {'good': 161, 'bad': 115} true {'good': 156, 'bad': 120}
+orange agrifreshnet n 271 pred {'good': 97, 'regular': 92, 'bad': 82} true {'good': 100, 'regular': 91, 'bad': 80}
+top20 importances
+h_hist_03    0.0267
+h_hist_01    0.0258
+h_hist_15    0.0150
+h_hist_00    0.0139
+b_hist_08    0.0122
+h_hist_02    0.0118
+b_hist_07    0.0113
+b_hist_09    0.0111
+g_hist_15    0.0102
+lbp_255      0.0100
+g_hist_14    0.0092
+lbp_124      0.0091
+s_hist_04    0.0079
+b_hist_05    0.0078
+b_hist_10    0.0076
+b_hist_06    0.0075
+h_hist_04    0.0074
+s_hist_05    0.0073
+lbp_000      0.0073
+h_hist_14    0.0073
+importance by family
+b        0.085
+g        0.091
+h        0.120
+lbp      0.493
+r        0.051
+s        0.075
+shape    0.035
+v        0.051
+dtype: float64
+SOURCE probe val bal.acc 0.9762 [[1527, 26], [62, 1941]]
+SOURCE probe (banana/orange, good+bad only) val bal.acc 0.975 n 880
+probe top10
+b_hist_08    0.0346
+h_hist_15    0.0326
+b_hist_09    0.0301
+v_hist_14    0.0294
+v_hist_15    0.0292
+lbp_004      0.0226
+b_hist_07    0.0222
+v_hist_13    0.0193
+r_hist_14    0.0179
+b_hist_10    0.0166
+ probe family shape bal.acc 0.8481
+ probe family lbp bal.acc 0.8878
+ probe family color bal.acc 0.9689

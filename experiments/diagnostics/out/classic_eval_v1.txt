@@ -1,0 +1,4 @@
+logistic_regression: val F1=0.6845 recall_bad=0.689 bad->good=149 F1_regular=0.5595 train F1=0.7488 gap=0.0643 | agrifreshnet:0.5704(n=2003,g=747,good/regular/bad) own:0.0000(n=1,g=1,good) ryandpark:0.8782(n=1553,g=1231,good/bad)
+svm_linear: val F1=0.6978 recall_bad=0.750 bad->good=155 F1_regular=0.5450 train F1=0.7470 gap=0.0493 | agrifreshnet:0.6004(n=2003,g=747,good/regular/bad) own:1.0000(n=1,g=1,good) ryandpark:0.8948(n=1553,g=1231,good/bad)
+random_forest: val F1=0.8424 recall_bad=0.868 bad->good=114 F1_regular=0.7557 train F1=0.9999 gap=0.1575 | agrifreshnet:0.7785(n=2003,g=747,good/regular/bad) own:1.0000(n=1,g=1,good) ryandpark:0.9684(n=1553,g=1231,good/bad)
+guardado /mnt/c/Users/damar/Desktop/fruit-vegetable-quality-classifier-ml/experiments/results/classic_eval_v1.json

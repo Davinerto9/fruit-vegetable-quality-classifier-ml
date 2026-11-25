@@ -57,28 +57,45 @@ def _metrics(y_true, y_pred):
     }
 
 
-def _dataset(tf, partition, class_to_id, batch_size, shuffle=False):
+def _dataset(tf, partition, class_to_id, batch_size, shuffle=False, cache=False):
+    """
+    Lote de recortes RGB con el fondo anulado por la máscara.
+
+    Con cache=True se guardan en memoria los PNG ya decodificados (uint8, sin modificar) y el
+    redimensionado y la máscara se aplican después, así que los tensores son idénticos a los
+    de cache=False. El orden también es igual: shuffle recibe la misma secuencia de elementos
+    con la misma semilla. Sirve para no releer los PNG en cada época.
+    """
     crop_paths = [str(config.CROPS_DIR / row["crop"]) for row in partition]
     mask_paths = [str(config.CROPS_DIR / row["crop_mask"]) for row in partition]
     labels = np.asarray([class_to_id[row["quality"]] for row in partition], dtype=np.int32)
     ds = tf.data.Dataset.from_tensor_slices((crop_paths, mask_paths, labels))
 
-    def load(crop_path, mask_path, label):
+    def decode(crop_path, mask_path, label):
         crop = tf.io.decode_image(tf.io.read_file(crop_path), channels=3,
                                   expand_animations=False)
         mask = tf.io.decode_image(tf.io.read_file(mask_path), channels=1,
                                   expand_animations=False)
+        return crop, mask, label
+
+    def prepare(crop, mask, label):
         crop = tf.image.resize(crop, config.IMG_SIZE, method="bilinear")
         mask = tf.image.resize(mask, config.IMG_SIZE, method="nearest")
         crop = crop * tf.cast(mask > 127, tf.float32) / 255.0
         return crop, label
 
-    if shuffle:
-        ds = ds.shuffle(min(len(partition), 8192), seed=config.SEED,
-                        reshuffle_each_iteration=True)
-    return ds.map(load, num_parallel_calls=tf.data.AUTOTUNE).batch(batch_size).prefetch(
-        tf.data.AUTOTUNE
-    )
+    if cache:
+        ds = ds.map(decode, num_parallel_calls=tf.data.AUTOTUNE, deterministic=True).cache()
+        if shuffle:
+            ds = ds.shuffle(min(len(partition), 8192), seed=config.SEED,
+                            reshuffle_each_iteration=True)
+        ds = ds.map(prepare, num_parallel_calls=tf.data.AUTOTUNE, deterministic=True)
+    else:
+        if shuffle:
+            ds = ds.shuffle(min(len(partition), 8192), seed=config.SEED,
+                            reshuffle_each_iteration=True)
+        ds = ds.map(lambda c, m, y: prepare(*decode(c, m, y)), num_parallel_calls=tf.data.AUTOTUNE)
+    return ds.batch(batch_size).prefetch(tf.data.AUTOTUNE)
 
 
 def _validate_partitions(rows):
@@ -93,7 +110,15 @@ def _validate_partitions(rows):
     return train_rows, val_rows
 
 
-def train(split_path: Path, epochs: int, batch_size: int):
+def _stem(run_name: str) -> str:
+    """Nombre base de los artefactos: cnn_rgb (baseline) o cnn_rgb_<run_name>."""
+    return f"cnn_rgb_{run_name}" if run_name else "cnn_rgb"
+
+
+def train(split_path: Path, epochs: int, batch_size: int, run_name: str = "", cache: bool = False,
+          patience: int = 6, reduce_lr_patience: int = 0, reduce_lr_factor: float = 0.5,
+          min_lr: float = 1e-5):
+    """Entrena la CNN. reduce_lr_patience=0 desactiva ReduceLROnPlateau (comportamiento original)."""
     tf = _tensorflow()
     tf.keras.utils.set_random_seed(config.SEED)
     rows = _load_rows(split_path)
@@ -119,37 +144,68 @@ def train(split_path: Path, epochs: int, batch_size: int):
     model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
                   loss="sparse_categorical_crossentropy", metrics=["accuracy"])
 
-    checkpoint = config.CHECKPOINTS / "cnn_rgb.keras"
-    result_path = config.RESULTS / "cnn_rgb.json"
-    history_path = config.LOGS / "cnn_rgb_history.json"
+    stem = _stem(run_name)
+    checkpoint = config.CHECKPOINTS / f"{stem}.keras"
+    result_path = config.RESULTS / f"{stem}.json"
+    history_path = config.LOGS / f"{stem}_history.json"
+    epochs_csv = config.LOGS / f"{stem}_epochs.csv"
+    if run_name and any(path.exists() for path in (checkpoint, result_path, epochs_csv)):
+        raise FileExistsError(f"Ya existen artefactos de {stem}; usa otro --run-name.")
     for path in (checkpoint, result_path, history_path):
         path.parent.mkdir(parents=True, exist_ok=True)
+    class EpochTimer(tf.keras.callbacks.Callback):
+        """Registra la duración de cada época (costo de cómputo, PI2)."""
+
+        def __init__(self):
+            super().__init__()
+            self.seconds = []
+
+        def on_epoch_begin(self, epoch, logs=None):
+            self._start = time.perf_counter()
+
+        def on_epoch_end(self, epoch, logs=None):
+            self.seconds.append(time.perf_counter() - self._start)
+
     callbacks = [
         tf.keras.callbacks.ModelCheckpoint(checkpoint, monitor="val_loss",
                                            save_best_only=True, verbose=1),
-        tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=6,
+        tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=patience,
                                         restore_best_weights=True, verbose=1),
-        tf.keras.callbacks.CSVLogger(str(config.LOGS / "cnn_rgb_epochs.csv")),
+        tf.keras.callbacks.CSVLogger(str(epochs_csv)),
+        EpochTimer(),
     ]
+    if reduce_lr_patience:
+        callbacks.insert(2, tf.keras.callbacks.ReduceLROnPlateau(
+            monitor="val_loss", factor=reduce_lr_factor, patience=reduce_lr_patience,
+            min_lr=min_lr, verbose=1))
     started = time.perf_counter()
-    history = model.fit(_dataset(tf, train_rows, class_to_id, batch_size, shuffle=True),
-                        validation_data=_dataset(tf, val_rows, class_to_id, batch_size),
+    val_ds = _dataset(tf, val_rows, class_to_id, batch_size, cache=cache)
+    history = model.fit(_dataset(tf, train_rows, class_to_id, batch_size, shuffle=True, cache=cache),
+                        validation_data=val_ds,
                         epochs=epochs, class_weight=class_weight, callbacks=callbacks,
                         verbose=1)
     duration = time.perf_counter() - started
 
     true_labels = np.asarray([class_to_id[row["quality"]] for row in val_rows])
-    probabilities = model.predict(_dataset(tf, val_rows, class_to_id, batch_size), verbose=0)
+    probabilities = model.predict(val_ds, verbose=0)
     prediction = probabilities.argmax(axis=1)
     result = {
-        "model": "cnn_rgb",
+        "model": stem,
+        "run_name": run_name or None,
+        "epoch_seconds": [round(s, 2) for s in callbacks[-1].seconds],
         "input": "128x128 RGB crops with background removed using the stored mask",
         "architecture": "3 Conv2D/BatchNorm/ReLU/MaxPool blocks, global average pooling, dropout, softmax",
         "split_file": str(split_path),
         "split_sha256": hashlib.sha256(split_path.read_bytes()).hexdigest(),
         "seed": config.SEED, "epochs_requested": epochs,
         "epochs_completed": len(history.history["loss"]),
-        "batch_size": batch_size, "class_weight": class_weight,
+        "batch_size": batch_size, "class_weight": class_weight, "dataset_cache": cache,
+        "optimizer": {"name": "adam", "initial_learning_rate": 1e-3},
+        "early_stopping": {"monitor": "val_loss", "patience": patience, "restore_best_weights": True},
+        "reduce_lr_on_plateau": ({"monitor": "val_loss", "factor": reduce_lr_factor,
+                                  "patience": reduce_lr_patience, "min_lr": min_lr}
+                                 if reduce_lr_patience else None),
+        "devices": [device.name for device in tf.config.list_logical_devices()],
         "test_used": False, "validation": _metrics(true_labels, prediction),
         "fit_seconds": round(duration, 2), "checkpoint": str(checkpoint),
         "history": {key: [float(value) for value in values]
@@ -182,7 +238,7 @@ def evaluate_checkpoint(
     )
     y_pred = probabilities.argmax(axis=1)
 
-    history_csv = config.LOGS / "cnn_rgb_epochs.csv"
+    history_csv = config.LOGS / f"{checkpoint_path.stem}_epochs.csv"
     history_rows = []
     if history_csv.is_file():
         with history_csv.open(encoding="utf-8-sig", newline="") as file:
@@ -232,9 +288,23 @@ if __name__ == "__main__":
     parser.add_argument(
         "--checkpoint", type=Path, default=config.CHECKPOINTS / "cnn_rgb.keras",
     )
-    parser.add_argument("--results", type=Path, default=config.RESULTS / "cnn_rgb.json")
+    parser.add_argument(
+        "--results", type=Path, default=None,
+        help="Salida de --evaluate-checkpoint; por defecto <checkpoint>_eval.json (no sobrescribe el JSON de entrenamiento).",
+    )
+    parser.add_argument("--patience", type=int, default=6, help="Paciencia de EarlyStopping.")
+    parser.add_argument("--reduce-lr-patience", type=int, default=0,
+                        help="Paciencia de ReduceLROnPlateau; 0 lo desactiva.")
+    parser.add_argument("--reduce-lr-factor", type=float, default=0.5)
+    parser.add_argument("--min-lr", type=float, default=1e-5)
+    parser.add_argument("--cache", action="store_true",
+                        help="Guarda en memoria los recortes decodificados (mismos tensores, menos I/O).")
+    parser.add_argument("--run-name", default="",
+                        help="Versiona checkpoint, resultados y logs como cnn_rgb_<run-name>.")
     args = parser.parse_args()
     if args.evaluate_checkpoint:
-        evaluate_checkpoint(args.split, args.checkpoint, args.results, args.batch_size)
+        results = args.results or config.RESULTS / f"{args.checkpoint.stem}_eval.json"
+        evaluate_checkpoint(args.split, args.checkpoint, results, args.batch_size)
     else:
-        train(args.split, args.epochs, args.batch_size)
+        train(args.split, args.epochs, args.batch_size, args.run_name, args.cache,
+              args.patience, args.reduce_lr_patience, args.reduce_lr_factor, args.min_lr)

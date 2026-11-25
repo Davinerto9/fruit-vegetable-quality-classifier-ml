@@ -1,0 +1,187 @@
+{
+  "model": "svm",
+  "input": "masked RGB/HSV histograms, LBP texture, and normalized shape descriptors",
+  "feature_count": 359,
+  "feature_cache": "data/processed/classic_features_v2_burst.npz",
+  "split_file": "data/processed/crops/splits_v2_burst.csv",
+  "split_sha256": "b0ac08f52b3871061d17b6629b3ec3815640afd4c93a3cecf3e78bb5eac7abc9",
+  "seed": 42,
+  "test_used": false,
+  "cross_validation": {
+    "method": "StratifiedGroupKFold",
+    "folds": 3,
+    "selection_metric": "macro_f1",
+    "candidates": [
+      {
+        "params": {
+          "C": 0.1
+        },
+        "fold_f1_macro": [
+          0.6669443219898183,
+          0.6685052264481945,
+          0.690474793469062
+        ],
+        "mean_f1_macro": 0.675308113969025,
+        "std_f1_macro": 0.010743377214969171
+      },
+      {
+        "params": {
+          "C": 1.0
+        },
+        "fold_f1_macro": [
+          0.6661916818621768,
+          0.6694543329481842,
+          0.6905041955987735
+        ],
+        "mean_f1_macro": 0.6753834034697115,
+        "std_f1_macro": 0.010774661293515874
+      },
+      {
+        "params": {
+          "C": 10.0
+        },
+        "fold_f1_macro": [
+          0.6667177330477694,
+          0.6697462315136798,
+          0.6901817304489232
+        ],
+        "mean_f1_macro": 0.6755485650034574,
+        "std_f1_macro": 0.01042081567361801
+      }
+    ],
+    "selected": {
+      "params": {
+        "C": 10.0
+      },
+      "fold_f1_macro": [
+        0.6667177330477694,
+        0.6697462315136798,
+        0.6901817304489232
+      ],
+      "mean_f1_macro": 0.6755485650034574,
+      "std_f1_macro": 0.01042081567361801
+    }
+  },
+  "training": {
+    "n": 16272,
+    "f1_macro": 0.736581781087153,
+    "balanced_accuracy": 0.740475924780991,
+    "confusion_matrix": [
+      [
+        5449,
+        813,
+        583
+      ],
+      [
+        565,
+        1895,
+        589
+      ],
+      [
+        591,
+        660,
+        5127
+      ]
+    ],
+    "confusion_matrix_labels": [
+      "good",
+      "regular",
+      "bad"
+    ],
+    "classification_report": {
+      "good": {
+        "precision": 0.8249810749432248,
+        "recall": 0.7960555149744339,
+        "f1-score": 0.8102602230483271,
+        "support": 6845.0
+      },
+      "regular": {
+        "precision": 0.5626484560570071,
+        "recall": 0.621515250901935,
+        "f1-score": 0.5906186691600437,
+        "support": 3049.0
+      },
+      "bad": {
+        "precision": 0.8139387204318146,
+        "recall": 0.8038570084666039,
+        "f1-score": 0.8088664510530883,
+        "support": 6378.0
+      },
+      "accuracy": 0.7664085545722714,
+      "macro avg": {
+        "precision": 0.7338560838106821,
+        "recall": 0.740475924780991,
+        "f1-score": 0.736581781087153,
+        "support": 16272.0
+      },
+      "weighted avg": {
+        "precision": 0.7714977728256085,
+        "recall": 0.7664085545722714,
+        "f1-score": 0.7685581227784765,
+        "support": 16272.0
+      }
+    }
+  },
+  "validation": {
+    "n": 3795,
+    "f1_macro": 0.7168589857540133,
+    "balanced_accuracy": 0.7184222122262272,
+    "confusion_matrix": [
+      [
+        1043,
+        191,
+        156
+      ],
+      [
+        169,
+        415,
+        125
+      ],
+      [
+        173,
+        133,
+        1390
+      ]
+    ],
+    "confusion_matrix_labels": [
+      "good",
+      "regular",
+      "bad"
+    ],
+    "classification_report": {
+      "good": {
+        "precision": 0.7530685920577618,
+        "recall": 0.7503597122302158,
+        "f1-score": 0.7517117117117117,
+        "support": 1390.0
+      },
+      "regular": {
+        "precision": 0.5615696887686062,
+        "recall": 0.5853314527503526,
+        "f1-score": 0.5732044198895028,
+        "support": 709.0
+      },
+      "bad": {
+        "precision": 0.8318372232196289,
+        "recall": 0.8195754716981132,
+        "f1-score": 0.8256608256608257,
+        "support": 1696.0
+      },
+      "accuracy": 0.7504611330698288,
+      "macro avg": {
+        "precision": 0.7154918346819988,
+        "recall": 0.7184222122262272,
+        "f1-score": 0.7168589857540133,
+        "support": 3795.0
+      },
+      "weighted avg": {
+        "precision": 0.7524938558307566,
+        "recall": 0.7504611330698288,
+        "f1-score": 0.751410269644716,
+        "support": 3795.0
+      }
+    }
+  },
+  "fit_and_search_seconds": 101.82,
+  "checkpoint": "/mnt/c/Users/damar/Desktop/fruit-vegetable-quality-classifier-ml/experiments/checkpoints/svm_v2_burst.joblib"
+}

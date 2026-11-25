@@ -1,0 +1,11 @@
+I0000 00:00:1795567960.606399     424 port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+I0000 00:00:1795567964.459581     424 port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+cnn: F1=0.7478 recall_bad=0.807 bad->good=200 F1_regular=0.6209 regular->good=186 pred_regular_kaggle=12 | agrifreshnet=0.6478 own=0.0000 ryandpark=0.9133
+rf: F1=0.8569 recall_bad=0.897 bad->good=121 F1_regular=0.7834 regular->good=122 pred_regular_kaggle=1 | agrifreshnet=0.7994 own=0.2500 ryandpark=0.9535
+Δ(CNN−RF) global: -0.1091 IC95=[-0.1325, -0.0847]
+Δ(CNN−RF) ryandpark: -0.0402 IC95=[-0.0730, -0.0126]
+Δ(CNN−RF) agrifreshnet: -0.1516 IC95=[-0.1830, -0.1201]
+pair status {'both_correct': 2824, 'rf_only_wrong': 123, 'cnn_only_wrong': 497, 'both_wrong': 351}
+epochs 23 fit_s 672.71 epoch_s med 25.79 devices ['/device:CPU:0', '/device:GPU:0']
+cnn {'apple': (0.885, 30), 'banana': (0.849, 107), 'bitter_melon': (0.637, 64), 'cucumber': (0.662, 58), 'eggplant': (0.569, 94), 'guava': (0.847, 19), 'lime': (0.982, 14), 'orange': (0.78, 131), 'papaya': (0.5, 75), 'pineapple': (0.625, 75), 'pomegranate': (0.985, 20), 'tomato': (0.664, 173)}
+rf {'apple': (0.946, 30), 'banana': (0.929, 107), 'bitter_melon': (0.834, 64), 'cucumber': (0.929, 58), 'eggplant': (0.615, 94), 'guava': (0.906, 19), 'lime': (0.974, 14), 'orange': (0.906, 131), 'papaya': (0.711, 75), 'pineapple': (0.765, 75), 'pomegranate': (0.989, 20), 'tomato': (0.805, 173)}

@@ -1,0 +1,207 @@
+splits rows 23687 groups 13192
+        rows  groups
+split               
+test    3674    1979
+train  16456    9234
+val     3557    1979
+
+== source x quality (rows / groups) per split
+-- train
+quality       good  regular   bad    All
+source                                  
+agrifreshnet  3149     3122  2745   9016
+own             20       11     1     32
+ryandpark     3801        0  3607   7408
+All           6970     3133  6353  16456
+quality        bad  good  regular
+source                           
+agrifreshnet   981  1328     1142
+own              1     3        3
+ryandpark     2735  3045        0
+-- val
+quality       good  regular   bad   All
+source                                 
+agrifreshnet   620      705   678  2003
+own              1        0     0     1
+ryandpark      784        0   769  1553
+All           1405      705  1447  3557
+quality       bad  good  regular
+source                          
+agrifreshnet  241   255      251
+own             0     1        0
+ryandpark     586   645        0
+-- test
+quality       good  regular   bad   All
+source                                 
+agrifreshnet   643      641   771  2055
+own              3        0     1     4
+ryandpark      872        0   743  1615
+All           1518      641  1515  3674
+quality       bad  good  regular
+source                          
+agrifreshnet  244   261      231
+own             1     3        0
+ryandpark     565   675        0
+
+== proportions by source (all splits)
+quality         bad   good  regular
+source                             
+agrifreshnet  0.321  0.337    0.342
+own           0.054  0.649    0.297
+ryandpark     0.484  0.516    0.000
+
+== product x source x quality (val)
+quality                    bad  good  regular
+product      source                          
+apple        own             0     1        0
+             ryandpark     156   137        0
+banana       agrifreshnet   93    81       97
+             ryandpark      88   162        0
+bitter_melon agrifreshnet   87    92      105
+cucumber     agrifreshnet   77    82       83
+eggplant     agrifreshnet  110    72       68
+guava        ryandpark     143    77        0
+lime         ryandpark     123    98        0
+orange       agrifreshnet   80   100       91
+             ryandpark     120   156        0
+papaya       agrifreshnet   75    79      108
+pineapple    agrifreshnet   61    48       53
+pomegranate  ryandpark     139   154        0
+tomato       agrifreshnet   95    66      100
+
+== product x source (all) 
+source        agrifreshnet  own  ryandpark
+product                                   
+apple                    0    1       1995
+banana                1606   16       1581
+bitter_melon          1655    0          0
+cucumber              1756    0          0
+eggplant              1734    0          0
+guava                    0    0       1360
+lime                     0    0       1669
+mango                    0    2          0
+orange                1653   16       2005
+papaya                1704    2          0
+pineapple             1198    0          0
+pomegranate              0    0       1966
+tomato                1768    0          0
+
+== own photos
+manifest own rows 42
+decision
+candidate    37
+excluded      1
+review        4
+dtype: int64
+                       rows  groups
+split product quality              
+test  orange  good        2       2
+      papaya  bad         1       1
+              good        1       1
+train banana  bad         1       1
+              good        9       1
+              regular     6       1
+      mango   good        1       1
+              regular     1       1
+      orange  good       10       1
+              regular     4       1
+val   apple   good        1       1
+                              filename product  quality                   group  split
+13093     data/own/orange_good_001.jpg  orange     good          own:orange_001   test
+13104     data/own/orange_good_012.jpg  orange     good          own:orange_003   test
+13109      data/own/papaya_bad_001.jpg  papaya      bad  own:papaya_session_001   test
+13110     data/own/papaya_good_001.jpg  papaya     good  own:papaya_session_001   test
+13075      data/own/banana_bad_001.jpg  banana      bad  own:banana_session_001  train
+13076     data/own/banana_good_001.jpg  banana     good  own:banana_session_001  train
+13077     data/own/banana_good_002.jpg  banana     good  own:banana_session_001  train
+13078     data/own/banana_good_003.jpg  banana     good  own:banana_session_001  train
+13079     data/own/banana_good_004.jpg  banana     good  own:banana_session_001  train
+13080     data/own/banana_good_005.jpg  banana     good  own:banana_session_001  train
+13081     data/own/banana_good_006.jpg  banana     good  own:banana_session_001  train
+13082     data/own/banana_good_008.jpg  banana     good  own:banana_session_001  train
+13083     data/own/banana_good_009.jpg  banana     good  own:banana_session_001  train
+13084     data/own/banana_good_010.jpg  banana     good  own:banana_session_001  train
+13085  data/own/banana_regular_001.jpg  banana  regular  own:banana_session_001  train
+13086  data/own/banana_regular_002.jpg  banana  regular  own:banana_session_001  train
+13087  data/own/banana_regular_003.jpg  banana  regular  own:banana_session_001  train
+13088  data/own/banana_regular_004.jpg  banana  regular  own:banana_session_001  train
+13089  data/own/banana_regular_005.jpg  banana  regular  own:banana_session_001  train
+13090  data/own/banana_regular_006.jpg  banana  regular  own:banana_session_001  train
+13091           data/own/mango_002.jpg   mango     good   own:mango_session_001  train
+13092           data/own/mango_005.jpg   mango  regular   own:mango_session_001  train
+13094     data/own/orange_good_002.jpg  orange     good  own:orange_session_001  train
+13095     data/own/orange_good_003.jpg  orange     good  own:orange_session_001  train
+13096     data/own/orange_good_004.jpg  orange     good  own:orange_session_001  train
+13097     data/own/orange_good_005.jpg  orange     good  own:orange_session_001  train
+13098     data/own/orange_good_006.jpg  orange     good  own:orange_session_001  train
+13099     data/own/orange_good_007.jpg  orange     good  own:orange_session_001  train
+13100     data/own/orange_good_008.jpg  orange     good  own:orange_session_001  train
+13101     data/own/orange_good_009.jpg  orange     good  own:orange_session_001  train
+13102     data/own/orange_good_010.jpg  orange     good  own:orange_session_001  train
+13103     data/own/orange_good_011.jpg  orange     good  own:orange_session_001  train
+13105  data/own/orange_regular_001.jpg  orange  regular  own:orange_session_001  train
+13106  data/own/orange_regular_002.jpg  orange  regular  own:orange_session_001  train
+13107  data/own/orange_regular_003.jpg  orange  regular  own:orange_session_001  train
+13108  data/own/orange_regular_004.jpg  orange  regular  own:orange_session_001  train
+13074      data/own/apple_good_001.jpg   apple     good           own:apple_001    val
+own groups x split
+group
+own:apple_001               [val]
+own:banana_session_001    [train]
+own:mango_session_001     [train]
+own:orange_001             [test]
+own:orange_003             [test]
+own:orange_session_001    [train]
+own:papaya_session_001     [test]
+Name: split, dtype: object
+own excluded/not candidate:
+                           filename  quality  decision                 detail
+14168  data/own/banana_good_007.jpg      NaN  excluded  needs_instance_labels
+14178        data/own/mango_001.jpg  regular    review                    NaN
+14180        data/own/mango_003.jpg  regular    review                    NaN
+14181        data/own/mango_004.jpg  regular    review                    NaN
+14183        data/own/mango_006.jpg  regular    review                    NaN
+own candidates not in splits: []
+
+== group leakage checks
+groups in >1 split: 0
+agri base names in >1 split: 0
+agri aug rows 8233 of 13074
+
+== image stats by source x quality (manifest stats cols)
+width
+quality       bad    good  regular
+source                            
+agrifreshnet  NaN     NaN      NaN
+own           NaN  1200.0   1200.0
+ryandpark     NaN     NaN      NaN
+height
+quality       bad    good  regular
+source                            
+agrifreshnet  NaN     NaN      NaN
+own           NaN  1600.0   1600.0
+ryandpark     NaN     NaN      NaN
+brightness
+quality       bad    good  regular
+source                            
+agrifreshnet  NaN     NaN      NaN
+own           NaN  135.65   131.62
+ryandpark     NaN     NaN      NaN
+contrast
+quality       bad   good  regular
+source                           
+agrifreshnet  NaN    NaN      NaN
+own           NaN  46.27    44.48
+ryandpark     NaN    NaN      NaN
+sharpness
+quality       bad    good  regular
+source                            
+agrifreshnet  NaN     NaN      NaN
+own           NaN  886.09  1251.52
+ryandpark     NaN     NaN      NaN
+d_norm
+quality         bad   good  regular
+source                             
+agrifreshnet  0.522  0.528    0.531
+own           0.417  0.400    0.423
+ryandpark     0.502  0.498      NaN

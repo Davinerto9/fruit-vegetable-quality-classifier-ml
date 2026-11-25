@@ -75,7 +75,9 @@ def _evaluate_cv(model_name, estimator_factory, params_list, X, y, groups, folds
     return best, records
 
 
-def train_all(features_path: Path, split_path: Path, folds: int = 3):
+def train_all(features_path: Path, split_path: Path, folds: int = 3, tag: str = ""):
+    """Entrena SVM y RF. Con tag, los artefactos se guardan como <modelo>_<tag> sin tocar los previos."""
+    suffix = f"_{tag}" if tag else ""
     X, y, groups, train_idx, val_idx = _load(features_path, split_path)
     X_train, y_train, groups_train = X[train_idx], y[train_idx], groups[train_idx]
     if set(np.unique(y_train)) != set(config.QUALITY_CLASSES):
@@ -113,8 +115,10 @@ def train_all(features_path: Path, split_path: Path, folds: int = 3):
         val_metrics = _metrics(y[val_idx], model.predict(X[val_idx]))
         duration = time.perf_counter() - started
 
-        checkpoint = config.CHECKPOINTS / f"{model_name}.joblib"
-        result_path = config.RESULTS / f"{model_name}.json"
+        checkpoint = config.CHECKPOINTS / f"{model_name}{suffix}.joblib"
+        result_path = config.RESULTS / f"{model_name}{suffix}.json"
+        if tag and (checkpoint.exists() or result_path.exists()):
+            raise FileExistsError(f"Ya existe {checkpoint.name} o {result_path.name}; usa otro --tag.")
         checkpoint.parent.mkdir(parents=True, exist_ok=True)
         result_path.parent.mkdir(parents=True, exist_ok=True)
         joblib.dump({"model": model, "class_order": config.QUALITY_CLASSES,
@@ -146,5 +150,7 @@ if __name__ == "__main__":
                         default=config.DATA_PROCESSED / "classic_features.npz")
     parser.add_argument("--split", type=Path, default=config.CROPS_DIR / "splits.csv")
     parser.add_argument("--folds", type=int, default=3)
+    parser.add_argument("--tag", default="",
+                        help="Sufijo para versionar checkpoint y resultados (p. ej. v2_burst).")
     args = parser.parse_args()
-    train_all(args.features, args.split, args.folds)
+    train_all(args.features, args.split, args.folds, args.tag)

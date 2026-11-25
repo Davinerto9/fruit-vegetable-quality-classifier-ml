@@ -1,0 +1,6 @@
+cnn: F1=0.7973 recall_bad=0.870 bad->good=135 F1_regular=0.7131 regular->good=97 pred_regular_kaggle=1 | agrifreshnet=0.7292 own=0.2500 ryandpark=0.9077
+rf: F1=0.8569 recall_bad=0.897 bad->good=121 F1_regular=0.7834 regular->good=122 pred_regular_kaggle=1 | agrifreshnet=0.7994 own=0.2500 ryandpark=0.9535
+Δ(CNN−RF) global: -0.0596 IC95=[-0.0846, -0.0343]
+Δ(CNN−RF) ryandpark: -0.0458 IC95=[-0.0856, -0.0126]
+Δ(CNN−RF) agrifreshnet: -0.0703 IC95=[-0.1032, -0.0375]
+pair status {'both_correct': 2915, 'rf_only_wrong': 187, 'cnn_only_wrong': 406, 'both_wrong': 287}
