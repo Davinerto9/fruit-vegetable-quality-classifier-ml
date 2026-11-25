@@ -129,6 +129,28 @@ def _validate_partitions(rows):
     return train_rows, val_rows
 
 
+def train_holdout(train_rows, fraction: float, seed: int = config.SEED):
+    """
+    Separa ≈fraction de los GRUPOS de train para la parada temprana (EarlyStopping y
+    ReduceLROnPlateau), estratificado por calidad. Así validation no participa en el
+    entrenamiento y su métrica final es una medición limpia.
+
+    Retorna:
+        (filas para ajustar, filas de parada temprana), sin grupos compartidos.
+    """
+    from sklearn.model_selection import StratifiedGroupKFold
+
+    n_splits = max(2, round(1 / fraction))
+    y = [row["quality"] for row in train_rows]
+    groups = [row["group"] for row in train_rows]
+    _, held = next(StratifiedGroupKFold(n_splits, shuffle=True, random_state=seed)
+                   .split(np.zeros(len(train_rows)), y, groups))
+    held = set(held.tolist())
+    fit = [row for i, row in enumerate(train_rows) if i not in held]
+    stop = [row for i, row in enumerate(train_rows) if i in held]
+    return fit, stop
+
+
 def _stem(run_name: str) -> str:
     """Nombre base de los artefactos: cnn_rgb (baseline) o cnn_rgb_<run_name>."""
     return f"cnn_rgb_{run_name}" if run_name else "cnn_rgb"
@@ -136,12 +158,21 @@ def _stem(run_name: str) -> str:
 
 def train(split_path: Path, epochs: int, batch_size: int, run_name: str = "", cache: bool = False,
           patience: int = 6, reduce_lr_patience: int = 0, reduce_lr_factor: float = 0.5,
-          min_lr: float = 1e-5, augment: bool = False, filters_per_block=(32, 64, 128)):
-    """Entrena la CNN. reduce_lr_patience=0 desactiva ReduceLROnPlateau (comportamiento original)."""
+          min_lr: float = 1e-5, augment: bool = False, filters_per_block=(32, 64, 128),
+          es_holdout: float = 0.0):
+    """
+    Entrena la CNN. reduce_lr_patience=0 desactiva ReduceLROnPlateau (comportamiento original).
+
+    es_holdout > 0 hace la parada temprana con esa fracción de grupos de train (train_holdout)
+    en lugar de validation; validation solo se mide una vez al final.
+    """
     tf = _tensorflow()
     tf.keras.utils.set_random_seed(config.SEED)
     rows = _load_rows(split_path)
     train_rows, val_rows = _validate_partitions(rows)
+    stop_rows = val_rows
+    if es_holdout:
+        train_rows, stop_rows = train_holdout(train_rows, es_holdout)
 
     class_to_id = {name: index for index, name in enumerate(config.QUALITY_CLASSES)}
     class_ids = np.asarray([class_to_id[row["quality"]] for row in train_rows])
@@ -199,9 +230,11 @@ def train(split_path: Path, epochs: int, batch_size: int, run_name: str = "", ca
             min_lr=min_lr, verbose=1))
     started = time.perf_counter()
     val_ds = _dataset(tf, val_rows, class_to_id, batch_size, cache=cache)
+    stop_ds = val_ds if stop_rows is val_rows else _dataset(tf, stop_rows, class_to_id, batch_size,
+                                                             cache=cache)
     history = model.fit(_dataset(tf, train_rows, class_to_id, batch_size, shuffle=True, cache=cache,
                                  augment=augment),
-                        validation_data=val_ds,
+                        validation_data=stop_ds,
                         epochs=epochs, class_weight=class_weight, callbacks=callbacks,
                         verbose=1)
     duration = time.perf_counter() - started
@@ -225,7 +258,9 @@ def train(split_path: Path, epochs: int, batch_size: int, run_name: str = "", ca
         "batch_size": batch_size, "class_weight": class_weight, "dataset_cache": cache,
         "augmentation": "dihedral (flip LR, flip UD, transpose), train only" if augment else None,
         "optimizer": {"name": "adam", "initial_learning_rate": 1e-3},
-        "early_stopping": {"monitor": "val_loss", "patience": patience, "restore_best_weights": True},
+        "early_stopping": {"monitor": "val_loss", "patience": patience, "restore_best_weights": True,
+                           "data": (f"holdout de {es_holdout:.0%} de los grupos de train"
+                                    if es_holdout else "validation")},
         "reduce_lr_on_plateau": ({"monitor": "val_loss", "factor": reduce_lr_factor,
                                   "patience": reduce_lr_patience, "min_lr": min_lr}
                                  if reduce_lr_patience else None),
@@ -329,6 +364,9 @@ if __name__ == "__main__":
                         help="Guarda en memoria los recortes decodificados (mismos tensores, menos I/O).")
     parser.add_argument("--run-name", default="",
                         help="Versiona checkpoint, resultados y logs como cnn_rgb_<run-name>.")
+    parser.add_argument("--es-holdout", type=float, default=0.0,
+                        help="Fracción de grupos de train para la parada temprana (p. ej. 0.1); "
+                             "0 usa validation, como en las versiones anteriores.")
     args = parser.parse_args()
     if args.evaluate_checkpoint:
         results = args.results or config.RESULTS / f"{args.checkpoint.stem}_eval.json"
@@ -336,4 +374,5 @@ if __name__ == "__main__":
     else:
         train(args.split, args.epochs, args.batch_size, args.run_name, args.cache,
               args.patience, args.reduce_lr_patience, args.reduce_lr_factor, args.min_lr,
-              args.augment, tuple(int(value) for value in args.filters.split(",")))
+              args.augment, tuple(int(value) for value in args.filters.split(",")),
+              args.es_holdout)
