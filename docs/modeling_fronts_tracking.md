@@ -10,7 +10,7 @@ Scripts y salidas: [experiments/diagnostics/](../experiments/diagnostics/README.
 
 | Frente | Estado | Evidencia principal | Siguiente paso | Requiere acuerdo |
 |---|---|---|---|---|
-| Fix CNN | E1 aceptado; E2 pendiente | v2 baseline: val 0.748, parado en la época 23. **E1** (ReduceLROnPlateau, paciencia 12): val **0.797** (Δ +0.050, IC [+0.029, +0.071]); mejor época 52/64; `bad→good` 135; sin sobreajuste (val_loss 0.41 frente a train 0.38). Sigue por debajo del RF (Δ −0.060, IC [−0.085, −0.034]). | E2: E1 + augmentation geométrica (≤ 45 min) | Sí (lanzar E2) |
+| Fix CNN | **E3b candidata** (E1 aceptado, E2 rechazado, E3a detenida por costo) | Baseline v2 0.748 → E1 0.797 → **E3b (4 bloques) 0.8575** (Δ frente a E1 +0.060, IC [+0.036, +0.084]). Empata con el RF (Δ +0.001, IC [−0.027, +0.028]) con menos `bad→good` (90 frente a 121) y recall de bad 0.916. Hay señal de sobreajuste (loss train 0.095 frente a val 0.334), contenida por EarlyStopping. | Fijar el criterio de elección entre RF, CNN o ensamble antes de test; como mucho, una variante con regularización | Sí (equipo) |
 | Fix Random Forest | Candidato elegido por CV agrupada sobre v2 | Base v2: CV 0.810, val 0.840. Rejilla de 30 configuraciones; elegida leaf=5, depth=20, `max_features`=0.1: CV 0.816, val 0.857 (Δ +0.017, IC [+0.005, +0.028]), F1 regular 0.783, `bad→good` 121. La brecha train–CV sigue en ~0.18. | Variante LBP uniform (opcional); fijar el candidato antes del freeze | No |
 | `regular` solo en AgriFreshNET | Confusor confirmado. El atajo no está demostrado. | El 100% de `regular` no propio es de AgriFreshNET. La sonda de fuente alcanza 0.976 de balanced accuracy. La transferencia entre dominios cae de AUC 0.98 a 0.72. | Reportar las métricas por fuente y conseguir `regular` de otra fuente | Recolección de datos |
 | Pocas fotos propias en validation | Confirmado, con corrección parcial a la auditoría | Validation: 1 recorte (1 grupo). Test: 4 recortes en 3 grupos (la auditoría decía 0). Train: 32 recortes en 4 grupos. | Protocolo de recolección (abajo) | Recolección de datos |
@@ -158,6 +158,50 @@ En CPU, todo tarda unas 3,4 veces más.
 
 - **Decisión.** E1 cumple el criterio de aceptación: la mejor época llega antes del final, la mejora es mayor que 0.01 con un IC que excluye el 0, y `bad→good` baja de 200 a 135. **E1 pasa a ser la configuración base para E2.** La CNN sigue por debajo del RF, de forma significativa. E1 comete menos `regular→good` que RF (97 frente a 122), pero algo más `bad→good` (135 frente a 121).
 
+**E2 ejecutado (24-nov-2026), rechazado (resultado negativo).** Es E1 más `--augment`: en train, cada imagen recibe una de las 8 simetrías del cuadrado (flip horizontal, flip vertical, transposición) con semilla stateless. No hay interpolación ni cambios de color, brillo o saturación. `experiments/diagnostics/check_cnn_augment.py` comprobó que:
+- Las 512 imágenes son exactamente una simetría de su original.
+- Las 8 simetrías aparecen con la misma frecuencia (57–70).
+- Las etiquetas y la suma de píxeles se conservan.
+- Es reproducible, y con shuffle la simetría de cada imagen cambia entre épocas (402 de 409).
+
+Duró 28 min y la mejor época fue la 48 de 60.
+
+  | Modelo | Versión | F1 macro val | Recall bad | `bad→good` | F1 regular | `regular→good` | Kaggle | AgriFreshNET | Loss train / val (mejor época) |
+  |---|---|---:|---:|---:|---:|---:|---:|---:|---|
+  | CNN RGB | v2 E1 | **0.7973** | 0.870 | 135 | 0.713 | 97 | 0.908 | 0.729 | 0.380 / 0.412 |
+  | CNN RGB | v2 E2 (E1 + simetrías) | 0.7461 | 0.835 | 198 | 0.636 | 139 | 0.903 | 0.645 | 0.554 / 0.529 |
+
+  Δ E2 − E1 (bootstrap pareado por grupos, `out/paired_cnn_e2_vs_e1.txt`): global **−0.051 [−0.073, −0.031]**; AgriFreshNET −0.084 [−0.114, −0.054]; Kaggle −0.004 [−0.032, +0.023]. La caída se concentra en los productos de AgriFreshNET: berenjena 0.696 → 0.531, piña 0.711 → 0.562, tomate 0.738 → 0.629, bitter melon 0.739 → 0.649, pepino 0.692 → 0.619. Naranja y manzana casi no cambian.
+
+  **Interpretación.**
+  - *Comprobado:* la augmentation empeoró el ajuste de train (loss 0.38 → 0.55). Como E1 no sobreajustaba, regularizar más le quitó capacidad útil.
+  - *Hipótesis no comprobada:* en AgriFreshNET la orientación de la pieza o la dirección de la luz y los brillos es constante y aporta información. Puede ser una señal real de la forma de captura o un atajo propio del dataset; el resultado de E2 no distingue entre ambas.
+
+  **Decisión.** Se conserva E1 como CNN candidata. No se prueban más variantes de augmentation geométrica. La rejilla E3 (lr × dropout) apunta a la regularización y tiene poca probabilidad de ayudar sin sobreajuste: se propone sustituirla por una prueba de **capacidad** (más filtros o un cuarto bloque).
+
+**E3 de capacidad (24-nov-2026).** Usa la configuración de E1 (sin augmentation) y solo cambia `--filters`.
+- **E3a (64-128-256): detenida por costo.** Tardaba 197 s por época en la RTX 3050, lo que suponía 3–5 h. Se paró en la época 3, sin resultado. Las épocas parciales quedan en `out/cnn_e3a_partial_epochs.csv`.
+- **E3b (32-64-128-256, cuarto bloque): aceptada.** `cnn_rgb_v2_burst_e3b.keras`, con 389.667 parámetros entrenables; el modelo de 3 bloques tiene unos 94 mil (cálculo a partir de la arquitectura). Duró 55 min (mediana de 73 s por época) y la mejor época fue la **38 de 50**. Log en `out/train_cnn_v2_burst_e3b.log`.
+
+  | Modelo | Versión | F1 macro val | Recall bad | `bad→good` | F1 regular | `regular→good` | `regular` en Kaggle | Kaggle | AgriFreshNET | Loss train / val (mejor época) |
+  |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|
+  | CNN RGB | v2 E1 (3 bloques) | 0.7973 | 0.870 | 135 | 0.713 | 97 | 1 | 0.908 | 0.729 | 0.380 / 0.412 |
+  | CNN RGB | **v2 E3b (4 bloques)** | **0.8575** | **0.916** | **90** | 0.776 | 128 | 3 | 0.938 | **0.823** | 0.095 / 0.334 |
+  | RF | v2_burst_grid | 0.8569 | 0.897 | 121 | 0.783 | 122 | 1 | 0.954 | 0.799 | 0.993 (F1 train) |
+
+  Δ pareados con bootstrap de grupos (`out/paired_cnn_e3b_vs_e1.txt`, `out/cnn_vs_rf_v2_burst_e3b.txt`):
+  - E3b − E1: global **+0.060 [+0.036, +0.084]**; Kaggle +0.030 [+0.007, +0.054]; AgriFreshNET +0.094 [+0.060, +0.127]. Mejora en 11 de 12 productos; la mayor subida es en pepino (0.69 → 0.91).
+  - E3b − RF: global **+0.001 [−0.027, +0.028]**, un empate estadístico. Kaggle −0.016 [−0.049, +0.011]; AgriFreshNET +0.023 [−0.014, +0.061]. Ninguna diferencia es significativa.
+  - Por pareja: ambos aciertan 3.045; solo falla RF en 286; solo falla la CNN en 276; ambos fallan en 188. Los errores se solapan poco (Jaccard 0.25), así que un ensamble podría ayudar.
+
+  **Interpretación.**
+  - *Comprobado:* la limitación de E1 era de capacidad. Con un cuarto bloque, el campo receptivo llega a 8×8 antes del pooling global y `val_loss` baja de 0.41 a 0.33.
+  - *Nuevo riesgo:* **ahora sí hay señal de sobreajuste estadístico.** Desde la época 30, la pérdida de train sigue bajando (0.12 → 0.08) mientras `val_loss` oscila entre 0.33 y 0.50 sin mejorar, y la brecha de loss en la mejor época es 0.095 frente a 0.334. EarlyStopping con `restore_best_weights` lo contiene.
+  - Para E3b, la regularización (más dropout o L2) y la augmentation vuelven a ser hipótesis razonables. El rechazo de E2 se midió sobre un modelo que no sobreajustaba y no se traslada automáticamente a E3b.
+  - *Sesgo de selección:* entre las CNN se eligió por validation (E1, E2 y E3b son tres comparaciones), así que 0.8575 es algo optimista. Cualquier variante nueva aumenta ese sesgo. Para limitarlo, se propone cerrar la búsqueda de CNN con a lo sumo una variante más.
+
+  **Decisión.** **E3b pasa a ser la CNN candidata**: empata con el RF en F1 macro y comete un 26% menos de errores `bad→good` (90 frente a 121), con recall de `bad` 0.916. RF y CNN quedan como candidatos finales; el criterio de desempate acordado con el equipo (por ejemplo, `bad→good` o un ensamble) debe fijarse **antes** de abrir test.
+
 ## Frente 2. Random Forest
 
 **Configuración real del checkpoint:** `n_estimators=160`, `max_depth=None`, `min_samples_leaf=2` (lo eligió la CV), `min_samples_split=2`, `max_features='sqrt'` (unos 19 atributos de 359), `class_weight='balanced_subsample'`, `bootstrap=True` y sin OOB. Rejilla probada: 3 combinaciones con StratifiedGroupKFold de 3 folds. CV: 0.8115, **0.8196** y 0.8136.
@@ -266,8 +310,9 @@ Corrección a la auditoría: test **sí** tiene fotos propias (4), pero no son s
 | Aumentos de AgriFreshNET con su original | Fuga | Controlado | 0 originales en más de una partición; 8.233 de 13.074 son `aug_` | — |
 | Duplicados exactos | Fuga | Controlado | 18 conjuntos md5, ninguno entre particiones ni con etiquetas contradictorias | — |
 | Escalado o atributos ajustados fuera de train | Fuga | Descartado | StandardScaler está dentro del Pipeline; los atributos no tienen parámetros; los pesos de clase se calculan solo con train | — |
+| CNN E3b (4 bloques) | Sobreajuste estadístico | Confirmado, contenido | Desde la época 30 la loss de train baja (0.12 → 0.08) y la de val no mejora; en la mejor época, 0.095 frente a 0.334 | EarlyStopping con restore_best_weights; regularización como única variante adicional |
 | RF memoriza train | Sobreajuste estadístico | Esperado | Train 0.9999, CV 0.82, val 0.84; ~1460 hojas para 9.234 grupos | Rejilla de regularización; reportar CV como estimador |
-| CNN | Subentrenamiento probable | Hipótesis | Mejor época = última; `val_loss` oscilante | E1 |
+| CNN de 3 bloques | Subentrenamiento | Resuelto | E1 corrigió la optimización; E3b, la capacidad | — |
 | Selección repetida sobre val | Sesgo de selección | Bajo, pero crecerá | Hasta ahora la selección se hizo por CV; val solo se usó para reportar | Seleccionar por CV agrupada; val como confirmación |
 | Cambio de dominio entre fuentes | Generalización | Confirmado | AUC entre dominios de 0.72 a 0.75 | Declarar el alcance; métricas por fuente |
 | Soporte insuficiente del dominio propio | Falta de evidencia | Confirmado | 1 recorte en val | Frente 4 |

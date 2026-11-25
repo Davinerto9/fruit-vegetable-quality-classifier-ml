@@ -57,7 +57,22 @@ def _metrics(y_true, y_pred):
     }
 
 
-def _dataset(tf, partition, class_to_id, batch_size, shuffle=False, cache=False):
+def _geometric_augment(tf, index, crop, label):
+    """
+    Una de las 8 simetrías del cuadrado (flips horizontal y vertical, transposición), elegida
+    con operaciones stateless sembradas por (SEED, posición en la época). Solo permuta píxeles:
+    no interpola ni cambia color, brillo o saturación, que son la señal de calidad.
+    """
+    seed = tf.stack([tf.constant(config.SEED, tf.int64), tf.cast(index, tf.int64)])
+    seeds = tf.random.experimental.stateless_split(seed, num=3)
+    crop = tf.image.stateless_random_flip_left_right(crop, seeds[0])
+    crop = tf.image.stateless_random_flip_up_down(crop, seeds[1])
+    transpose = tf.random.stateless_uniform([], seeds[2]) < 0.5
+    crop = tf.cond(transpose, lambda: tf.transpose(crop, [1, 0, 2]), lambda: crop)
+    return crop, label
+
+
+def _dataset(tf, partition, class_to_id, batch_size, shuffle=False, cache=False, augment=False):
     """
     Lote de recortes RGB con el fondo anulado por la máscara.
 
@@ -95,6 +110,10 @@ def _dataset(tf, partition, class_to_id, batch_size, shuffle=False, cache=False)
             ds = ds.shuffle(min(len(partition), 8192), seed=config.SEED,
                             reshuffle_each_iteration=True)
         ds = ds.map(lambda c, m, y: prepare(*decode(c, m, y)), num_parallel_calls=tf.data.AUTOTUNE)
+    if augment:
+        # Solo para train: la posición cambia de elemento en cada época porque shuffle se repite.
+        ds = ds.enumerate().map(lambda i, item: _geometric_augment(tf, i, *item),
+                                num_parallel_calls=tf.data.AUTOTUNE, deterministic=True)
     return ds.batch(batch_size).prefetch(tf.data.AUTOTUNE)
 
 
@@ -117,7 +136,7 @@ def _stem(run_name: str) -> str:
 
 def train(split_path: Path, epochs: int, batch_size: int, run_name: str = "", cache: bool = False,
           patience: int = 6, reduce_lr_patience: int = 0, reduce_lr_factor: float = 0.5,
-          min_lr: float = 1e-5):
+          min_lr: float = 1e-5, augment: bool = False, filters_per_block=(32, 64, 128)):
     """Entrena la CNN. reduce_lr_patience=0 desactiva ReduceLROnPlateau (comportamiento original)."""
     tf = _tensorflow()
     tf.keras.utils.set_random_seed(config.SEED)
@@ -132,7 +151,7 @@ def train(split_path: Path, epochs: int, batch_size: int, run_name: str = "", ca
 
     inputs = tf.keras.Input(shape=(*config.IMG_SIZE, 3))
     x = inputs
-    for filters in (32, 64, 128):
+    for filters in filters_per_block:
         x = tf.keras.layers.Conv2D(filters, 3, padding="same", use_bias=False)(x)
         x = tf.keras.layers.BatchNormalization()(x)
         x = tf.keras.layers.ReLU()(x)
@@ -180,7 +199,8 @@ def train(split_path: Path, epochs: int, batch_size: int, run_name: str = "", ca
             min_lr=min_lr, verbose=1))
     started = time.perf_counter()
     val_ds = _dataset(tf, val_rows, class_to_id, batch_size, cache=cache)
-    history = model.fit(_dataset(tf, train_rows, class_to_id, batch_size, shuffle=True, cache=cache),
+    history = model.fit(_dataset(tf, train_rows, class_to_id, batch_size, shuffle=True, cache=cache,
+                                 augment=augment),
                         validation_data=val_ds,
                         epochs=epochs, class_weight=class_weight, callbacks=callbacks,
                         verbose=1)
@@ -194,12 +214,16 @@ def train(split_path: Path, epochs: int, batch_size: int, run_name: str = "", ca
         "run_name": run_name or None,
         "epoch_seconds": [round(s, 2) for s in callbacks[-1].seconds],
         "input": "128x128 RGB crops with background removed using the stored mask",
-        "architecture": "3 Conv2D/BatchNorm/ReLU/MaxPool blocks, global average pooling, dropout, softmax",
+        "architecture": (f"{len(filters_per_block)} Conv2D/BatchNorm/ReLU/MaxPool blocks, global average "
+                         "pooling, dropout, softmax"),
+        "filters_per_block": list(filters_per_block),
+        "trainable_params": int(sum(np.prod(w.shape) for w in model.trainable_weights)),
         "split_file": str(split_path),
         "split_sha256": hashlib.sha256(split_path.read_bytes()).hexdigest(),
         "seed": config.SEED, "epochs_requested": epochs,
         "epochs_completed": len(history.history["loss"]),
         "batch_size": batch_size, "class_weight": class_weight, "dataset_cache": cache,
+        "augmentation": "dihedral (flip LR, flip UD, transpose), train only" if augment else None,
         "optimizer": {"name": "adam", "initial_learning_rate": 1e-3},
         "early_stopping": {"monitor": "val_loss", "patience": patience, "restore_best_weights": True},
         "reduce_lr_on_plateau": ({"monitor": "val_loss", "factor": reduce_lr_factor,
@@ -297,6 +321,10 @@ if __name__ == "__main__":
                         help="Paciencia de ReduceLROnPlateau; 0 lo desactiva.")
     parser.add_argument("--reduce-lr-factor", type=float, default=0.5)
     parser.add_argument("--min-lr", type=float, default=1e-5)
+    parser.add_argument("--filters", default="32,64,128",
+                        help="Filtros por bloque convolucional, separados por coma (capacidad).")
+    parser.add_argument("--augment", action="store_true",
+                        help="Augmentation geométrica en train (8 simetrías del cuadrado; sin cambios de color).")
     parser.add_argument("--cache", action="store_true",
                         help="Guarda en memoria los recortes decodificados (mismos tensores, menos I/O).")
     parser.add_argument("--run-name", default="",
@@ -307,4 +335,5 @@ if __name__ == "__main__":
         evaluate_checkpoint(args.split, args.checkpoint, results, args.batch_size)
     else:
         train(args.split, args.epochs, args.batch_size, args.run_name, args.cache,
-              args.patience, args.reduce_lr_patience, args.reduce_lr_factor, args.min_lr)
+              args.patience, args.reduce_lr_patience, args.reduce_lr_factor, args.min_lr,
+              args.augment, tuple(int(value) for value in args.filters.split(",")))
