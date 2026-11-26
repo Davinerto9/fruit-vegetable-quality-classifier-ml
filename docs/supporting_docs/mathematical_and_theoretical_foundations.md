@@ -1,6 +1,6 @@
 # Fundamentos matemáticos y teóricos
 
-Este documento sostiene el indicador **PI3** (solución de problemas con matemáticas). Cada ecuación corresponde a código del repositorio; la columna *Implementación* de cada tabla indica dónde verificarla. Las cifras salen de `experiments/results/` y `experiments/diagnostics/out/`, sobre validation del split v2 por ráfagas. Test sigue reservado. El seguimiento detallado de los experimentos está en [modeling_fronts_tracking.md](../modeling_fronts_tracking.md).
+Este documento sostiene el indicador **PI3** (solución de problemas con matemáticas). Cada ecuación corresponde a código del repositorio; la columna *Implementación* de cada tabla indica dónde verificarla. Las cifras de §8 son de validación del reparto v2 y explican por qué se eligió esta configuración; se reemplazan por las de v3 al reentrenar con el [plan simple](../plan_simple.md). Test sigue reservado.
 
 | Evidencia exigida por la consigna | Sección |
 | --- | --- |
@@ -275,7 +275,7 @@ $$
 
 El bootstrap y el submuestreo de atributos bajan $\rho$; promediar $T$ árboles elimina el segundo término. Por eso árboles profundos (sesgo bajo, varianza alta) funcionan bien en conjunto.
 
-**Configuración elegida** (`src/training/rf_grid.py`). Rejilla de 30 configuraciones: `min_samples_leaf` ∈ {1, 2, 5, 10, 20} × `max_depth` ∈ {sin límite, 20, 12} × $m$ ∈ {$\lfloor\sqrt{359}\rfloor=18$, $\lfloor0{,}1\cdot359\rfloor=35$}, con $T=160$. La regla se fijó antes de ver resultados: entre las configuraciones a menos de una desviación estándar de la mejor CV, gana la de menos `bad→good` en CV y, si empatan, la de menor brecha entre train y CV. Ganó `min_samples_leaf=5`, `max_depth=20`, $m=35$ (CV 0,816 ± 0,009).
+**Configuración elegida** (`src/training/train_classic.py`). `GridSearchCV` prueba `min_samples_leaf` ∈ {1, 5, 20} × `max_depth` ∈ {sin límite, 20} × $m$ ∈ {$\lfloor\sqrt{359}\rfloor=18$, $\lfloor0{,}1\cdot359\rfloor=35$}, con $T=200$, y se queda con la de mayor F1 macro promedio en la CV por grupos (§7.2). En v2, una búsqueda equivalente eligió `min_samples_leaf=5`, `max_depth=20` y $m=35$.
 
 - Con $m=35$, la CV supera a $m=18$ en las 15 combinaciones de hoja y profundidad: cada corte ve más atributos útiles, a costa de árboles algo más correlacionados.
 - Usar 400 árboles no cambia la CV (0,8186 frente a 0,8185): con $T=160$ el término $(1-\rho)\sigma^2/T$ ya es despreciable.
@@ -311,7 +311,7 @@ m_t=\beta_1m_{t-1}+(1-\beta_1)g_t,\quad v_t=\beta_2v_{t-1}+(1-\beta_2)g_t^2,\qua
 \theta_t=\theta_{t-1}-\eta_t\,\frac{\hat m_t}{\sqrt{\hat v_t}+\epsilon}.
 $$
 
-*ReduceLROnPlateau* hace $\eta_t\leftarrow\max(\eta_t/2,\ 10^{-5})$ tras 4 épocas sin mejora de la pérdida de validation. *EarlyStopping* con paciencia 12 restaura los pesos de la mejor época.
+*ReduceLROnPlateau* hace $\eta_t\leftarrow\max(\eta_t/2,\ 10^{-5})$ tras 4 épocas sin mejora de la pérdida en un holdout del 10% de los grupos de *train*. *EarlyStopping*, sobre ese mismo holdout y con paciencia 12, restaura los pesos de la mejor época. Validación no interviene.
 
 ### 6.5 Pérdida y pesos de clase
 
@@ -346,7 +346,7 @@ y la ganancia crece cuanto más difieren los dos modelos. RF y CNN fallan en con
 
 Dos precauciones:
 
-1. `predict_proba` de scikit-learn ordena las clases alfabéticamente (`bad`, `good`, `regular`). Hay que reordenarlas a $\mathcal{Y}$ antes de sumar, como hacen `eval_ensemble_v2.py` y la app.
+1. `predict_proba` de scikit-learn ordena las clases alfabéticamente (`bad`, `good`, `regular`). Hay que reordenarlas a $\mathcal{Y}$ antes de sumar, como hacen la app (`src/app/inference.py`) y el auditor de test (`src/evaluation/model_audit.py`).
 2. Las probabilidades de la CNN son más extremas que las de RF, así que $w$ nominal no es la influencia real de cada modelo. Calibrar ambas, por ejemplo con *temperature scaling*, queda como mejora.
 
 ---
@@ -386,7 +386,7 @@ $$
 \lambda^\*=\arg\max_{\lambda\in\Lambda}\ \frac{1}{F}\sum_{f=1}^{F}\text{F1}_\text{macro}\big(h_{\lambda}^{(-f)},\ \text{fold}_f\big),
 $$
 
-con la regla de desempate de §6.3 para RF. Para la CNN no hay CV, porque cada entrenamiento tarda de 30 a 55 minutos en GPU. Validation se usó para EarlyStopping, para elegir el checkpoint y para elegir entre tres variantes (E1, E2, E3b). Eso introduce un sesgo de selección: el 0,858 de la CNN y el 0,875 del ensamble son algo optimistas, y la única estimación sin sesgo será test, que se abre una sola vez y está protegido por un archivo de bloqueo y un *freeze* de hashes.
+implementado con `GridSearchCV(scoring="f1_macro", cv=StratifiedGroupKFold(3))`, que además reentrena el mejor modelo con todo *train*. Lo mismo se hace para el Random Forest de fruta, con el producto como etiqueta. Para la CNN no hay CV, porque cada entrenamiento tarda de 30 a 55 minutos en GPU: su arquitectura viene de los experimentos de §8.2 y su parada temprana usa un holdout de *train*. Así, validación y prueba no eligen nada y se miden una sola vez. En v2, la CNN se había elegido con validación, y por eso sus cifras de §8 son algo optimistas.
 
 ### 7.3 Métricas
 
@@ -460,7 +460,7 @@ La secuencia E1 → E2 → E3b funciona como un experimento del dilema sesgo–v
 - E2 aumentó la regularización y empeoró, lo que confirma que el problema no era la varianza.
 - E3b aumentó la capacidad (campo receptivo de 22 a 46 px) y redujo el sesgo, a cambio de varianza.
 
-Con E3b, la regularización vuelve a ser una mejora razonable, pero probar más variantes aumentaría el sesgo de selección de §7.2.
+Con E3b, la regularización vuelve a ser una mejora razonable, pero probar más variantes con validación aumentaría el sesgo de selección; se deja como trabajo futuro.
 
 ### 8.3 Descomposición por fuente: el confusor
 
@@ -516,7 +516,7 @@ La conclusión defendible es que hay un confusor y un cambio de dominio fuerte. 
    - Comprobar si AgriFreshNET también tiene ráfagas por fecha y hora, con la misma prueba de CV de §7.1.
    - Conjunto externo de fotos propias con al menos 40 piezas por clase (§7.4).
    - Calibrar las probabilidades antes de combinarlas (§6.6).
-   - Regularizar E3b solo si se acepta el costo en sesgo de selección.
+   - Regularizar E3b eligiendo con validación cruzada, no con validación.
 
 ---
 

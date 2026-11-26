@@ -37,24 +37,24 @@ Las fuentes se normalizan a las clases good, regular y bad, conservando proceden
 
 El split busca proporciones aproximadas de 70/15/15 para entrenamiento, validación y prueba, con semilla 42. Cada grupo se asigna completo a una sola partición. Se verifican intersecciones, cobertura por calidad, fuente y producto, exclusiones y distribución obtenida. La validación cruzada también respeta grupos. Cualquier escalado, selección de atributos, cálculo de pesos de clase y aumento de datos se ajusta exclusivamente con entrenamiento.
 
-### Fuga detectada en el split v1 y split v2 vigente
+### Versiones del reparto: v1, v2 y v3
 
-El split v1 (`splits.csv`) tenía grupos disjuntos, pero los grupos de Kaggle eran **uno por archivo** y no uno por ráfaga de captura. El manifiesto se había generado desde un `index.csv` anterior al agrupamiento por ráfagas. Como resultado, 645 de 746 ráfagas quedaron repartidas entre particiones, y el 99% de los recortes de Kaggle en validation compartía ráfaga con train. Medido con CV agrupada, el F1 de Kaggle estaba inflado en unos 3,5 puntos (0,968 frente a 0,932).
+Las tres versiones usan **los mismos recortes**; solo cambia qué fotos se consideran "la misma" y, por tanto, deben quedar juntas en *train*, validación o prueba.
 
-`python -m src.data.split_v2` genera `crops/splits_v2_burst.csv` (sha256 `b0ac08f5…`). Usa los mismos recortes, las mismas exclusiones y el mismo `assign_groups`, pero con los grupos por ráfaga de `index.csv`. No modifica `splits.csv` ni el manifiesto.
+| Versión | Qué se agrupa | Problema que corrige | Archivo |
+| --- | --- | --- | --- |
+| v1 | Una foto con sus copias aumentadas | — | `splits.csv` (`src/data/split.py`) |
+| v2 | Además, las ráfagas de Kaggle (fotos tomadas segundos seguidos) | En v1, el 99% de las fotos de Kaggle en validación tenía una gemela en entrenamiento; el F1 de Kaggle subía unos 3,5 puntos (0,968 frente a 0,932). | `splits_v2_burst.csv` (`src/data/split_v2.py`) |
+| **v3** | Además, las sesiones de AgriFreshNET (misma fruta y semana) | AgriFreshNET fotografía las mismas piezas durante semanas (carpetas `Fresh X(1-9)`, `Semi fresh X(9-20)`, `Rotten X(24-35)`: días desde la compra). En validación v2, 727 grupos de AgriFreshNET eran en realidad 82 sesiones de semana. | `splits_v3_<nivel>.csv` (`src/data/split_v3.py`) |
 
-| | v1 | **v2 (vigente)** |
+| | v1 | v2 |
 | --- | ---: | ---: |
 | Recortes | 23.687 | 23.543 |
 | Grupos | 13.192 | 5.677 |
 | train / val / test (recortes) | 16.456 / 3.557 / 3.674 | 16.272 / 3.795 / 3.476 |
 | Ráfagas de Kaggle repartidas | 645 | 0 |
-| Grupos en validation | 1.979 | 852 (125 de Kaggle) |
-| Fotos propias en val / test | 1 / 4 | 4 / 1 |
 
-Todos los modelos vigentes se entrenaron sobre v2. Detalle y comprobaciones: [seguimiento de modelado, F0](modeling_fronts_tracking.md#f0-fuga-por-ráfagas-de-kaggle-hallazgo-nuevo-bloqueante).
-
-**Fuga en AgriFreshNET y split v3.** AgriFreshNET es una serie temporal: las carpetas `Fresh X(1-9)`, `Semi fresh X(9-20)` y `Rotten X(24-35)` cuentan días desde la compra, así que las mismas piezas aparecen durante semanas. v2 trataba cada foto original como un grupo; solo en validation v2, los 727 grupos de AgriFreshNET colapsan a 196 sesiones de día y 82 de semana. El split v3 (`src/data/split_v3.py`) deja cada sesión completa en una sola partición. Elige el nivel más grueso (semana, luego día, luego minuto) que conserve las tres calidades y las proporciones 70/15/15 con un desvío de hasta 5 puntos; el F1 no interviene en la elección. Ver el [plan simple](plan_simple.md).
+v3 se construye a partir de v2 (por eso se conservan los tres scripts). Elige el agrupamiento más amplio (semana, luego día, luego minuto) que siga dejando las tres calidades en cada partición y las proporciones 70/15/15 con un desvío de hasta 5 puntos. El F1 no interviene en esa elección. Las cifras de la tabla de v3 se agregan al generarlo ([plan simple](plan_simple.md), paso 1).
 
 ## Artefactos y estado
 

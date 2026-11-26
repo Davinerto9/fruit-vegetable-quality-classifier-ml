@@ -1,9 +1,0 @@
-Medición de costo CNN — 2026-11-24, split v2 (splits_v2_burst.csv), 16.272 recortes train, 3.795 val, batch 64, arquitectura baseline.
-Entorno: WSL Ubuntu, TF 2.21.0, TF_DETERMINISTIC_OPS=1. Datos leídos desde /mnt/c (sistema de archivos de Windows).
-GPU (RTX 3050 6 GB) requiere LD_LIBRARY_PATH=/usr/lib/wsl/lib:<site-packages>/nvidia/*/lib; sin eso TF cae a CPU.
-Comando: python -m src.training.train_cnn --split data/processed/crops/splits_v2_burst.csv --epochs 2 --run-name timing_{gpu,cpu}
-GPU: épocas de 72.8 s y 129.3 s (incluye validation); proceso total 3 min 57 s. sys alto -> probable cuello de I/O.
-CPU (CUDA_VISIBLE_DEVICES=-1): épocas de 335.3 s y 352.0 s; proceso total 12 min 16 s.
-Val F1 tras 2 épocas (sin significado de rendimiento): GPU 0.4485, CPU 0.5578. Las diferencias numéricas entre dispositivos
-impiden comparar corridas de distinto dispositivo: todas las corridas comparables deben usar el mismo.
-Artefactos timing_* borrados después de la medición.

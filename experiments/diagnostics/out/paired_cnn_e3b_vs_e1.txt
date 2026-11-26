@@ -1,3 +1,0 @@
-Δ F1 (v2_burst_e3b − v2_burst_e1) global       +0.0602 IC95=[+0.0357, +0.0839]
-Δ F1 (v2_burst_e3b − v2_burst_e1) ryandpark    +0.0299 IC95=[+0.0068, +0.0535]
-Δ F1 (v2_burst_e3b − v2_burst_e1) agrifreshnet +0.0936 IC95=[+0.0598, +0.1269]

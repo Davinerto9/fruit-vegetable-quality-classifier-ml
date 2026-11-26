@@ -89,7 +89,7 @@ def ensemble_probabilities(p_rf: np.ndarray, rf_classes, p_cnn: np.ndarray,
     Voto suave (1 - w) * p_RF + w * p_CNN, con columnas en el orden de config.QUALITY_CLASSES.
 
     scikit-learn ordena classes_ alfabéticamente; se reordena antes de combinar, igual que en
-    experiments/diagnostics/eval_ensemble_v2.py.
+    src/app/inference.py.
     """
     order = [list(rf_classes).index(label) for label in config.QUALITY_CLASSES]
     return (1 - cnn_weight) * p_rf[:, order] + cnn_weight * p_cnn

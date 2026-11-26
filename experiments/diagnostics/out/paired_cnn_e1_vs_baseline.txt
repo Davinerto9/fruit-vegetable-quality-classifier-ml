@@ -1,5 +1,0 @@
-Δ F1 (v2_burst_e1 − v2_burst_baseline) global       +0.0495 IC95=[+0.0288, +0.0711]
-Δ F1 (v2_burst_e1 − v2_burst_baseline) ryandpark    -0.0056 IC95=[-0.0256, +0.0142]
-Δ F1 (v2_burst_e1 − v2_burst_baseline) agrifreshnet +0.0813 IC95=[+0.0507, +0.1124]
-best ep52 train_acc 0.846 train_loss 0.38 val_loss 0.412 val_acc 0.817 lr 6.25000029685907e-05
-epochs 64 fit_s 1788.49

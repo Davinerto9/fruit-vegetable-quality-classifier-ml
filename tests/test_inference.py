@@ -111,7 +111,7 @@ def _prediction(key, probabilities):
 
 
 def test_ensemble_is_the_fixed_soft_vote():
-    """p = 0,5·p_RF + 0,5·p_CNN, igual que experiments/diagnostics/eval_ensemble_v2.py."""
+    """p = 0,5·p_RF + 0,5·p_CNN, igual que src/evaluation/model_audit.py."""
     rf = _prediction("random_forest", {"good": 0.6, "regular": 0.3, "bad": 0.1})
     cnn = _prediction("cnn_rgb", {"good": 0.1, "regular": 0.2, "bad": 0.7})
     final, note = inference.final_decision([rf, cnn], mode="ensemble", cnn_weight=0.5)

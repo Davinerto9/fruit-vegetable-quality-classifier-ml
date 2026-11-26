@@ -1,59 +1,40 @@
 # 4. Modelado
 
-## Objetivo y datos de entrada
+## Qué se entrena
 
-Se clasifican recortes de una pieza en `good`, `regular` o `bad`. Todos los modelos vigentes se entrenaron y compararon sobre el **split v2 por ráfagas** (`data/processed/crops/splits_v2_burst.csv`, sha256 `b0ac08f52b3871061d17b6629b3ec3815640afd4c93a3cecf3e78bb5eac7abc9`): 16.272 recortes de train y 3.795 de validation en 852 grupos. Test no se ha usado.
+A partir del recorte de **una** pieza (ver [preparación](03_data_preparation.md)), el sistema responde dos preguntas:
 
-Los modelos clásicos reciben 359 atributos de la pieza enmascarada: color RGB/HSV, textura LBP y forma. La CNN recibe recortes RGB de 128 × 128 con el fondo anulado mediante la máscara. Las ecuaciones y la justificación de cada modelo están en los [fundamentos matemáticos](supporting_docs/mathematical_and_theoretical_foundations.md#6-modelos).
+| Pregunta | Modelo | Entrada |
+| --- | --- | --- |
+| ¿Qué fruta o verdura es? | Random Forest de fruta (12 productos) | 359 atributos: color RGB/HSV, textura LBP y forma |
+| ¿En qué estado está? | Regresión logística (línea base), SVM lineal, Random Forest y CNN | Los mismos 359 atributos; la CNN recibe el recorte RGB de 128 × 128 con el fondo anulado |
 
-> **Por qué v2.** El split v1 tenía una fuga por ráfagas en Kaggle (ver [preparación](03_data_preparation.md#fuga-detectada-en-el-split-v1-y-split-v2-vigente)). Las cifras de v1 (RF 0,842, CNN 0,799) ya no son válidas como resultado y solo se conservan para comparar.
+El estado que muestra la app es el **promedio 50/50 de las probabilidades del Random Forest y la CNN**. El peso se fijó de antemano y no se ajusta con validación. Las ecuaciones de cada modelo están en los [fundamentos matemáticos](supporting_docs/mathematical_and_theoretical_foundations.md#6-modelos).
 
-## Modelos candidatos
+## Cómo se eligen los hiperparámetros
 
-| Modelo | Configuración | Selección | F1 macro val v2 | `bad→good` | Checkpoint |
-| --- | --- | --- | ---: | ---: | --- |
-| Regresión logística (línea base) | `StandardScaler`, C=1, pesos balanceados | Fija | 0,714 | 165 | `logistic_baseline_v2_burst.joblib` |
-| SVM lineal | `LinearSVC`, C=10 | CV agrupada, 3 valores de C | 0,717 | 173 | `svm_v2_burst.joblib` |
-| Random Forest | 160 árboles, `min_samples_leaf=5`, `max_depth=20`, `max_features=0.1` | CV agrupada, 30 configuraciones, regla fijada antes | 0,857 | 121 | `random_forest_v2_burst_grid.joblib` |
-| CNN E3b | 4 bloques (32-64-128-256), 389.667 parámetros, ReduceLROnPlateau, EarlyStopping (paciencia 12); mejor época 38 de 50 | Validation, entre E1, E2 y E3b | 0,858 | 90 | `cnn_rgb_v2_burst_e3b.keras` |
-| Ensamble RF + CNN E3b | Voto suave 0,5/0,5, peso fijado antes de evaluar | — | **0,875** | **79** | Usa los dos anteriores |
+- **Modelos clásicos** (`src/training/train_classic.py`): `GridSearchCV` de scikit-learn con `StratifiedGroupKFold(3)` y métrica F1 macro, solo con *train*. Los grupos (fotos de la misma ráfaga o sesión) nunca quedan a la vez en entrenamiento y evaluación de un fold. El mejor modelo se reentrena con todo *train*.
 
-Los checkpoints viven en `experiments/checkpoints/` y no se suben a Git por tamaño. Los JSON de resultados están en `experiments/results/` y los diagnósticos en `experiments/diagnostics/out/`.
+  | Modelo | Rejilla |
+  | --- | --- |
+  | Regresión logística | C ∈ {0,1; 1; 10} |
+  | SVM lineal | C ∈ {0,1; 1; 10} |
+  | Random Forest (estado) | `min_samples_leaf` ∈ {1, 5, 20} × `max_depth` ∈ {sin límite, 20} × `max_features` ∈ {√p, 0,1} |
+  | Random Forest (fruta) | `min_samples_leaf` ∈ {1, 5} × `max_features` ∈ {√p, 0,1} |
 
-## Experimentos de la CNN
+- **CNN** (`src/training/train_cnn.py`): 4 bloques Conv 3×3 → BatchNorm → ReLU → MaxPool (32, 64, 128 y 256 filtros), pooling global promedio, *dropout* 0,35 y softmax; 389.667 parámetros. Adam con reducción del learning rate en meseta. La parada temprana usa el 10% de los grupos de *train* (`--es-holdout 0.1`), no validación.
+- **Desbalance:** pesos de clase calculados solo con *train*.
 
-Cada experimento cambia una sola variable respecto al anterior aceptado.
+## Cómo llegamos a esta configuración
 
-| ID | Cambio | F1 val v2 | Decisión | Lectura |
-| --- | --- | ---: | --- | --- |
-| Baseline v2 | Misma configuración que v1 | 0,748 | — | EarlyStopping cortó en la época 23 por oscilaciones de la pérdida. |
-| E1 | 100 épocas, ReduceLROnPlateau, paciencia 12 | 0,797 | Aceptado | Converge (mejor época 52 de 64) y no sobreajusta: el límite era de capacidad. |
-| E2 | E1 + 8 simetrías del cuadrado en train | 0,746 | Rechazado | Regularizar un modelo que no sobreajusta empeora (Δ −0,051 [−0,073; −0,031]). |
-| E3a | 3 bloques con 64-128-256 filtros | — | Detenida | 197 s por época: demasiado costosa. |
-| E3b | Cuarto bloque (32-64-128-256) | 0,858 | **Candidata** | Δ +0,060 [+0,036; +0,084] frente a E1. El campo receptivo pasa de 22 a 46 px. Sobreajusta desde la época 30, pero EarlyStopping lo contiene. |
+| Versión | Qué cambió | Resultado en validación (F1 macro del estado) |
+| --- | --- | --- |
+| v1 | Primer reparto de fotos | RF 0,842 y CNN 0,799, **inflados**: fotos casi idénticas de Kaggle quedaban a la vez en entrenamiento y validación. |
+| v2 | Reparto por ráfagas de Kaggle | RF 0,857, CNN de 4 bloques 0,858 y promedio 0,875. La CNN pasó de 3 a 4 bloques porque con 3 no alcanzaba (subajuste); aumentar datos con giros empeoró. Seguía la trampa de AgriFreshNET. |
+| **v3** | Reparto por sesiones de AgriFreshNET y validación usada una sola vez | Pendiente de reentrenar con el [plan simple](plan_simple.md). |
 
-## Lectura provisional
-
-- **RF y la CNN E3b empatan** en F1 macro (Δ +0,001 [−0,027; +0,028]). La CNN comete un 26% menos de errores `bad→good`.
-- **El ensamble** mejora todos los indicadores de riesgo: recall de `bad` 0,926, `bad→good` 79 y `regular→good` 115. Frente a RF, la diferencia global no es significativa (Δ +0,018 [−0,004; +0,042]), pero sí lo es en AgriFreshNET (+0,044 [+0,012; +0,077]).
-- **Por fuente**, el F1 del ensamble es 0,949 en Kaggle (solo `good`/`bad`) y 0,843 en AgriFreshNET (tres clases). La segunda es la cifra representativa del problema de tres clases.
-- **Sesgo de selección:** la CNN se eligió en validation entre tres variantes, y validation también se usó para EarlyStopping. Su 0,858 y el 0,875 del ensamble son algo optimistas.
-
-## Versión final (plan simple)
-
-Los modelos de la tabla anterior se entrenaron sobre v2, que todavía tenía la fuga de AgriFreshNET, y la CNN se eligió con validation. La versión que se sustenta se reentrena sobre el split v3 con el [plan simple](plan_simple.md):
-
-- **Clásicos:** `src/training/train_classic.py`. `GridSearchCV` con `StratifiedGroupKFold(3)` sobre train y F1 macro, para la regresión logística, la SVM lineal y Random Forest (estado), y para un **Random Forest de fruta** que identifica el producto.
-- **CNN:** la misma arquitectura E3b (4 bloques). La parada temprana usa el 10% de los grupos de train (`--es-holdout 0.1`), no validation.
-- **Estado final:** promedio 50/50 de RF y CNN, fijado de antemano.
-- **Validation y test:** una vez cada uno, con `src/evaluation/model_audit.py`.
+Las cifras de v1 y v2 solo explican el camino; las de la sustentación son las de v3.
 
 ## Reproducibilidad
 
-- Clásicos, con scikit-learn 1.7.2 y `S=data/processed/crops/splits_v2_burst.csv`, `F=data/processed/classic_features_v2_burst.npz`:
-  - `python -m src.features.subset_classic_cache --split $S --output $F`
-  - `python -m src.training.classical_models --features $F --split $S --tag v2_burst`
-  - `python -m src.training.rf_grid --features $F --split $S --tag v2_burst_grid`
-- CNN E3b: `python -m src.training.train_cnn --split data/processed/crops/splits_v2_burst.csv --run-name v2_burst_e3b --epochs 100 --patience 12 --reduce-lr-patience 4 --filters 32,64,128,256 --cache`, en GPU con `TF_DETERMINISTIC_OPS=1`.
-- Ensamble: `experiments/diagnostics/eval_ensemble_v2.py`.
-- Seguimiento completo de los experimentos: [modeling_fronts_tracking.md](modeling_fronts_tracking.md).
+Los comandos, en orden y con tiempos, están en el [plan simple](plan_simple.md) (pasos 1 a 6). Los checkpoints se guardan en `experiments/checkpoints/`, fuera de Git por tamaño. Los resultados, en `experiments/results/classic_<tag>.json` y `cnn_rgb_<run>.json`.

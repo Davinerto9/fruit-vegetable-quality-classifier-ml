@@ -20,7 +20,7 @@ Flujo de analyze_image():
 4. Atributos clásicos (src.features.classic) para Random Forest; recorte x máscara para la CNN.
 5. Probabilidades por clase en el orden de config.QUALITY_CLASSES y categoría de tamaño.
 6. Decisión final según config.APP_MODEL: voto suave RF + CNN con peso fijo
-   config.APP_ENSEMBLE_CNN_WEIGHT (el mismo de experiments/diagnostics/eval_ensemble_v2.py),
+   config.APP_ENSEMBLE_CNN_WEIGHT (el mismo que usa src/evaluation/model_audit.py),
    o un solo modelo. Si el modelo pedido no está disponible, se usa el que haya y se avisa.
 
 No se guarda ninguna imagen: todo ocurre en memoria.
@@ -144,7 +144,7 @@ def _validation_f1(result_stem: str) -> float | None:
 
 def ensemble_validation_f1() -> float | None:
     """F1 de validation del ensamble formado por los checkpoints de la app, si se evaluó."""
-    # Nombre que usa eval_ensemble_v2.py: ensemble_rf_<tag RF>_cnn_<run CNN>.json
+    # Nombre del JSON de un ensamble evaluado: ensemble_rf_<tag RF>_cnn_<run CNN>.json
     rf_tag = Path(config.APP_RF_CHECKPOINT).stem.removeprefix("random_forest_")
     cnn_run = Path(config.APP_CNN_CHECKPOINT).stem.removeprefix("cnn_rgb_")
     return _validation_f1(f"ensemble_rf_{rf_tag}_cnn_{cnn_run}")

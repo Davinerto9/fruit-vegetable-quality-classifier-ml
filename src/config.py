@@ -182,7 +182,7 @@ APP_MIN_PRODUCT_CONFIDENCE = 0.5
 # La elección final la fija el equipo antes de abrir test; si falta un modelo, la app usa el otro.
 APP_MODEL = "ensemble"
 # Peso de la CNN en el voto suave p = (1 - w) * p_RF + w * p_CNN. Fijado en 0,5 antes de ver
-# resultados (experiments/diagnostics/eval_ensemble_v2.py); no se ajusta con validation.
+# resultados; no se ajusta con validation.
 APP_ENSEMBLE_CNN_WEIGHT = 0.5
 
 # Probabilidad mínima de la clase predicha para mostrarla sin advertencia. Por debajo, la app

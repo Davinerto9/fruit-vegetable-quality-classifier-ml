@@ -36,7 +36,7 @@ Desde la raíz del repo, con el ambiente activado (`pip install -r requirements.
 
 | # | Qué | Comando | Tiempo |
 | --- | --- | --- | --- |
-| 1 | Repartir las fotos sin trampa | `python -m src.data.split_v3 --choose` | 1 min |
+| 1 | Repartir las fotos sin trampa (parte del reparto v2; si no tienes `splits_v2_burst.csv`, corre antes `python -m src.data.split` y `python -m src.data.split_v2`) | `python -m src.data.split_v3 --choose` | 1 min |
 | 2 | *(Opcional)* medir cuánto inflaba la trampa | `PYTHONPATH=. python experiments/diagnostics/agri_leak_ladder.py` | 20 min |
 | 3 | Atributos para el nuevo reparto | `python -m src.features.subset_classic_cache --split $S --output $F` | 1 min |
 | 4 | Modelos clásicos (estado y fruta) | `python -m src.training.train_classic --split $S --features $F --tag v3_week` | 15–25 min |

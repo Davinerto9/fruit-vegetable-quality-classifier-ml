@@ -153,12 +153,7 @@ def test_leak_ladder_runs_end_to_end(tmp_path, monkeypatch):
     features = tmp_path / "features.npz"
     np.savez(features, X=rng.random((len(rows), 8)),
              filenames=np.asarray([r["filename"] for r in rows]))
-    results = tmp_path / "results"
-    results.mkdir()
-    (results / "random_forest_v2_burst_grid.json").write_text(json.dumps(
-        {"selected": {"min_samples_leaf": 2, "max_depth": 5, "max_features": "sqrt"},
-         "n_estimators": 8}))
-    monkeypatch.setattr(config, "RESULTS", results)
+    monkeypatch.setattr(ladder, "RF_PARAMS", {"n_estimators": 8, "max_depth": 5})
     monkeypatch.setattr(ladder, "OUT", tmp_path / "out")
 
     ladder.main(split_path, features, seeds=[0], folds=2)

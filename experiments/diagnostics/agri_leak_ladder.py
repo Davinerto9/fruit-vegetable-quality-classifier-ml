@@ -6,20 +6,19 @@ Uso (desde la raíz, con scikit-learn 1.7.2, como los demás diagnósticos):
     PYTHONPATH=. python experiments/diagnostics/agri_leak_ladder.py
     PYTHONPATH=. python experiments/diagnostics/agri_leak_ladder.py --seeds 42 43 44 --folds 3
 
-Entradas: data/processed/crops/splits_v2_burst.csv, data/processed/classic_features_v2_burst.npz
-          y experiments/results/random_forest_v2_burst_grid.json (configuración elegida de RF).
+Entradas: data/processed/crops/splits_v2_burst.csv y data/processed/classic_features_v2_burst.npz.
+          Usa un Random Forest fijo (RF_PARAMS): la prueba compara agrupamientos, no modelos.
 Salida:   experiments/diagnostics/out/agri_leak_ladder.txt y .json
 
 Qué mide, por nivel (photo, minute, day, week; ver src/data/agri_sessions.py):
 1. Cruce de particiones en v2: cuántas sesiones de AgriFreshNET tienen filas en train y en
    val/test, y cuántas filas de val de AgriFreshNET comparten sesión con train.
-2. CV agrupada (StratifiedGroupKFold) de Random Forest con la configuración de la rejilla,
-   repetida con varias semillas, sobre train v2: F1 macro global, de AgriFreshNET (3 clases) y
-   de Kaggle (2 clases).
+2. CV agrupada (StratifiedGroupKFold) de un Random Forest fijo, repetida con varias semillas,
+   sobre train v2: F1 macro global, de AgriFreshNET (3 clases) y de Kaggle (2 clases).
 
 Lectura: si el F1 de AgriFreshNET baja al pasar de "photo" a niveles más gruesos, la CV por
 foto estaba inflada por fotos de la misma sesión o de la misma pieza. Es la misma prueba que
-reveló la fuga de Kaggle (F0, cv_burst.py).
+reveló la fuga de Kaggle en el reparto v1.
 
 El nivel del split v3 NO se elige con esta tabla (eso sería seleccionar por desempeño): la
 regla fijada en docs/plan_simple.md toma el nivel más grueso cuyo split cumpla cobertura y
@@ -65,12 +64,14 @@ def crossing_stats(rows: list[dict], level: str) -> dict:
     }
 
 
+# Configuración que ganó la búsqueda de hiperparámetros sobre v2. Se deja fija para que la
+# única diferencia entre filas de la tabla sea el agrupamiento.
+RF_PARAMS = {"n_estimators": 160, "min_samples_leaf": 5, "max_depth": 20, "max_features": 0.1}
+
+
 def rf_from_grid() -> RandomForestClassifier:
-    saved = json.loads((config.RESULTS / "random_forest_v2_burst_grid.json").read_text(encoding="utf-8"))
-    params = dict(saved["selected"])            # min_samples_leaf, max_depth, max_features
-    params["n_estimators"] = int(saved.get("n_estimators", 160))
-    params.update(class_weight="balanced_subsample", n_jobs=-1, random_state=config.SEED)
-    return RandomForestClassifier(**params)
+    return RandomForestClassifier(**RF_PARAMS, class_weight="balanced_subsample", n_jobs=-1,
+                                  random_state=config.SEED)
 
 
 def cv_scores(X, y, source, groups, seed: int, folds: int, model) -> dict:

@@ -47,7 +47,7 @@ Las seis fotos de mango **no son del equipo**: son las mismas seis de la carpeta
 
 La clase regular está concentrada en una fuente, faltan etiquetas por pieza para escenas Mixed y algunas imágenes requieren revisión de calidad o segmentación. El inventario y el EDA inicial orientan la preparación, pero no prueban que todos los recortes automáticos sean válidos ni que el conjunto final sea representativo.
 
-**Estado:** inventario, conteos básicos y notebook EDA disponibles; la auditoría visual de candidatos fue estratificada y encontró escenas adicionales con varias piezas. Revisar más recortes, sobre todo manos, sombras y contornos incompletos, antes de presentar el conjunto como validado. Consultar [revisión de anotaciones y segmentación](revision-anotaciones.md) y [criterios de calidad](criterios-calidad.md).
+**Estado:** inventario, conteos básicos y notebook EDA disponibles; la auditoría visual de candidatos fue estratificada y encontró escenas adicionales con varias piezas. Revisar más recortes, sobre todo manos, sombras y contornos incompletos, antes de presentar el conjunto como validado. Consultar los [criterios de calidad](criterios-calidad.md).
 
 ## Referencias de esta fase
 

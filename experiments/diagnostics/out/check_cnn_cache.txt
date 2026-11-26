@@ -1,7 +1,0 @@
-WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
-WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
-E0000 00:00:1795567231.560949     427 cuda_platform.cc:52] failed call to cuInit: INTERNAL: CUDA error: Failed call to cuInit: CUDA_ERROR_NO_DEVICE: no CUDA-capable device is detected
-shuffle=False pasada=1: n=700 labels iguales=True pixeles iguales=True max|dif|=0.00e+00
-shuffle=False pasada=2: n=700 labels iguales=True pixeles iguales=True max|dif|=0.00e+00
-shuffle=True pasada=1: n=700 labels iguales=True pixeles iguales=True max|dif|=0.00e+00
-shuffle=True pasada=2: n=700 labels iguales=True pixeles iguales=True max|dif|=0.00e+00

@@ -1,53 +1,38 @@
 # 5. Evaluación
 
-## Estado
+## Reglas
 
-Hay una evaluación completa en **validation v2** (3.795 recortes, 852 grupos) para los cinco candidatos. Test no se ha consultado (`test_used: false`; no existen `pretest_freeze.sha256` ni `test_evaluation.lock`). Las cifras de validation v1 que aparecían antes en este documento (RF 0,842, CNN 0,799) estaban afectadas por la fuga por ráfagas de Kaggle y se reemplazaron.
+1. **Validación y prueba se usan una sola vez.** Ninguna de las dos elige hiperparámetros, modelos ni pesos: eso se decide con validación cruzada dentro de *train* ([modelado](04_modeling.md)).
+2. **La prueba tiene candado.** `src/evaluation/model_audit.py --partition test --confirm-final-test` exige un archivo `pretest_freeze.sha256` con el split y los modelos congelados, y crea `test_evaluation.lock`. Un segundo intento se rechaza.
+3. **Las fotos de celular** del pool de la clase se etiquetan a ciegas (sin abrir la app) y se evalúan una vez, también con candado (`src/evaluation/external_eval.py`).
 
-## Resultados en validation v2
+## Métricas
 
-| Modelo | F1 macro [IC 95% por grupos] | Recall `bad` | `bad→good` | F1 `regular` | Kaggle (2 clases) | AgriFreshNET (3 clases) |
-| --- | --- | ---: | ---: | ---: | ---: | ---: |
-| Regresión logística | 0,714 | 0,789 | 165 | 0,590 | 0,871 | 0,616 |
-| SVM lineal | 0,717 | 0,820 | 173 | 0,573 | 0,881 | 0,628 |
-| Random Forest | 0,857 [0,834 – 0,878] | 0,897 | 121 | 0,783 | 0,954 | 0,799 |
-| CNN E3b | 0,858 [0,831 – 0,881] | 0,916 | 90 | 0,776 | 0,938 | 0,823 |
-| **Ensamble 0,5/0,5** | **0,875** | **0,926** | **79** | **0,799** | 0,949 | **0,843** |
+| Métrica | Para qué | Cómo se explica |
+| --- | --- | --- |
+| Accuracy | Fruta | De cada 100 fotos, en cuántas acertó la fruta. |
+| F1 macro | Estado | Promedio del F1 de buena, regular y mala con el mismo peso; no se infla acertando solo la clase más común. |
+| Matriz de confusión | Ambas | Qué se confunde con qué. |
+| Errores mala→buena | Estado | Frutas malas que pasarían como buenas: el error más caro. |
+| F1 por fuente | Estado | Kaggle solo tiene buena y mala; AgriFreshNET tiene las tres. La cifra representativa de tres clases es la de AgriFreshNET. |
+| Intervalo de confianza 95% | Todas | Rango probable de la cifra real, calculado remuestreando grupos o sesiones de fotos. |
 
-Diferencias pareadas con bootstrap por grupos (IC 95%):
+## Resultados
 
-- CNN E3b − RF: +0,001 [−0,027; +0,028]. Empate.
-- Ensamble − RF: +0,018 [−0,004; +0,042] global, no significativo; en AgriFreshNET, +0,044 [+0,012; +0,077].
-- Ensamble − CNN: +0,018 [+0,008; +0,028]. Significativo global, en Kaggle y en AgriFreshNET.
+| Conjunto | Estado | Fuente |
+| --- | --- | --- |
+| Validación v3 | Pendiente de reentrenar ([plan simple](plan_simple.md), paso 6) | `experiments/results/validation_v3_week_*.json` |
+| Fotos de celular | Pendiente de etiquetar (pasos 7 a 9) | `experiments/results/external_evaluation.json` |
+| Prueba | Reservada hasta congelar (paso 10) | `experiments/results/final_test_v3_week_*.json` |
 
-Fuentes: `experiments/diagnostics/out/ensemble_rf_cnn_e3b.txt`, `cnn_vs_rf_v2_burst_e3b.txt`, `classic_eval_v2_burst.txt` y `experiments/results/*_v2_burst*.json`.
+Como referencia del camino, en validación v2 el promedio RF + CNN obtuvo F1 macro 0,875 (0,843 en AgriFreshNET), con 79 frutas malas clasificadas como buenas. Esa cifra todavía tenía la fuga de AgriFreshNET y la CNN se había elegido con validación, así que no es la que se sustenta.
 
-## Hallazgos
+## Hallazgos que se mantienen
 
-1. **Fuga corregida.** En v1, el 99% de los recortes de Kaggle en validation compartía ráfaga con train, y el F1 de Kaggle estaba inflado en unos 3,5 puntos. El split v2 no tiene ninguna ráfaga repartida.
-2. **Confusor fuente–clase.** Todos los `regular` no propios vienen de AgriFreshNET. Una sonda que predice la fuente con los mismos atributos acierta el 97,6%, y la transferencia entre fuentes cae de AUC 0,98 a 0,72. El atajo no está demostrado, pero la señal aprendida no transfiere bien. Por eso se reportan siempre las métricas por fuente.
-3. **Fotos de celular sin medir.** Validation v2 tiene 4 fotos propias, y RF y la CNN fallan 3. Con n = 4 no se puede estimar el desempeño, pero el resultado es coherente con el cambio de dominio. El conjunto externo `external_own_v1` (al menos 40 piezas por clase) es la forma de medirlo.
-4. **Errores complementarios.** RF y la CNN coinciden en el 84,3% de las fotos; en las 594 donde discrepan, el ensamble acierta el 58,4%, frente al 46,5% de RF y el 48,1% de la CNN.
-5. **Sesgo de selección.** La CNN se eligió en validation entre tres variantes, así que las cifras de la CNN y del ensamble son algo optimistas. La estimación sin sesgo será la de test.
+1. **Fotos casi iguales inflan la nota.** En v1, el 99% de las fotos de Kaggle en validación tenía una "gemela" de la misma ráfaga en entrenamiento, y el F1 de Kaggle subía unos 3,5 puntos. AgriFreshNET tiene el mismo problema por sesiones de fotos de las mismas piezas; v3 lo corrige.
+2. **La clase regular viene casi toda de AgriFreshNET.** Un modelo que adivina la fuente con los mismos atributos acierta el 97,6%, y lo aprendido en una fuente se transfiere mal a la otra. Por eso se reportan las métricas por fuente y se prueba con fotos de celular.
+3. **Fotos de celular.** En validación v2 solo había 4 fotos propias, y los modelos fallaron 3. Las fotos del pool de la clase son la forma de medirlo de verdad.
 
-## Secuencia antes de abrir test
+## Lo que el resultado no garantiza
 
-> La secuencia vigente es la del [plan simple](plan_simple.md): split v3 sin la fuga de AgriFreshNET, reentrenamiento con `GridSearchCV` por grupos, validation una vez, fotos de celular etiquetadas a ciegas y evaluadas una vez, y test una vez. Los pasos de abajo son el resumen anterior.
-
-1. Probar si las ráfagas por fecha y hora de AgriFreshNET producen fuga (CV agrupada por minuto). Si la hay, generar un split v3 y reentrenar RF y E3b con la misma configuración, sin buscar variantes nuevas.
-2. Fijar por escrito el modelo final y su criterio (recomendado: ensamble 0,5/0,5, por el costo del error `bad→good`).
-3. Guardar el *freeze*: commit, hash del split, hashes de los checkpoints y versiones de las librerías.
-4. Evaluar `external_own_v1` una sola vez con el modelo congelado, si se completa la recolección.
-5. Ejecutar test una sola vez con `src/evaluation/model_audit.py --partition test --confirm-final-test`.
-
-## Métricas y reporte final
-
-Se reportan F1 macro, balanced accuracy, precisión, recall y F1 por clase, matriz de confusión y soporte, todo con IC por grupos y desglosado por fuente. Se destacan los errores `bad→good` y `regular→good`. El resultado de test será una estimación bajo las fuentes disponibles, no una garantía de rendimiento con fotos de celular.
-
-## Artefactos
-
-- Resultados v2: `experiments/results/*_v2_burst*.json` y `ensemble_rf_v2_burst_grid_cnn_v2_burst_e3b.json`.
-- Predicciones por recorte: `experiments/diagnostics/out/val_v2_predictions_v2_burst_*.csv`.
-- Diagnósticos de fuente, dominio, fuga y CI: `experiments/diagnostics/out/`.
-- Seguimiento y matriz de riesgos: [modeling_fronts_tracking.md](modeling_fronts_tracking.md).
-- Auditoría v1 (histórica): `experiments/results/validation_audit.json`.
+La cifra de prueba estima el desempeño con fotos parecidas a las de los datasets. No garantiza el mismo desempeño con cualquier celular, luz o fondo, ni con frutas que el modelo no conoce.

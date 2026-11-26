@@ -1,8 +1,0 @@
-imágenes=512 exactamente una simetría del original=512/512
-frecuencia por simetría (0=identidad): {0: 67, 1: 57, 2: 60, 3: 70, 4: 68, 5: 69, 6: 62, 7: 59}
-etiquetas iguales al original: True
-suma de píxeles conservada: True
-pasada 1 != pasada 2 (varía entre épocas): False
-reproducible con la misma semilla: True
-shuffle=True: imágenes identificadas=409; con simetría distinta en alguna de 3 épocas=402
-23 passed in 1.84s
