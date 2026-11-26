@@ -1,28 +1,23 @@
 """
-Escalera de fuga en AgriFreshNET: ¿cuánto cambia la CV si se agrupa por minuto, día o semana?
+Prueba de fuga: ¿cuánto se infla la nota si NO se agrupan las fotos de la misma sesión?
 
-Fase CRISP-DM: Evaluación (diagnóstico)
-Uso (desde la raíz, con scikit-learn 1.7.2, como los demás diagnósticos):
-    PYTHONPATH=. python experiments/diagnostics/agri_leak_ladder.py
-    PYTHONPATH=. python experiments/diagnostics/agri_leak_ladder.py --seeds 42 43 44 --folds 3
+Fase CRISP-DM: Evaluación (diagnóstico, opcional)
+Uso: python -m src.main fuga        (o python -m src.evaluation.leak_check)
 
-Entradas: data/processed/crops/splits_v2_burst.csv y data/processed/classic_features_v2_burst.npz.
-          Usa un Random Forest fijo (RF_PARAMS): la prueba compara agrupamientos, no modelos.
-Salida:   experiments/diagnostics/out/agri_leak_ladder.txt y .json
+Idea: se hace la misma validación cruzada de un Random Forest fijo sobre train, cambiando
+solo cómo se agrupan las fotos de AgriFreshNET:
+    photo   cada foto con sus copias aumentadas (lo mínimo)
+    minute  fotos del mismo minuto
+    day     fotos del mismo día y producto
+    week    fotos de la misma semana y producto (lo que usa el proyecto)
+Si el F1 baja al agrupar más grueso, significa que con grupos finos el modelo veía en
+evaluación fotos casi iguales a las de entrenamiento: la nota estaba inflada (fuga).
 
-Qué mide, por nivel (photo, minute, day, week; ver src/data/agri_sessions.py):
-1. Cruce de particiones en v2: cuántas sesiones de AgriFreshNET tienen filas en train y en
-   val/test, y cuántas filas de val de AgriFreshNET comparten sesión con train.
-2. CV agrupada (StratifiedGroupKFold) de un Random Forest fijo, repetida con varias semillas,
-   sobre train v2: F1 macro global, de AgriFreshNET (3 clases) y de Kaggle (2 clases).
+También cuenta, para cada nivel, cuántas fotos de val comparten sesión con train en el
+reparto actual. Con el reparto del proyecto, a nivel "week" debe dar 0.
 
-Lectura: si el F1 de AgriFreshNET baja al pasar de "photo" a niveles más gruesos, la CV por
-foto estaba inflada por fotos de la misma sesión o de la misma pieza. Es la misma prueba que
-reveló la fuga de Kaggle en el reparto v1.
-
-El nivel del split v3 NO se elige con esta tabla (eso sería seleccionar por desempeño): la
-regla fijada en docs/plan_simple.md toma el nivel más grueso cuyo split cumpla cobertura y
-proporciones. Esta escalera cuantifica la fuga para el informe.
+No elige nada: la semana se fijó antes (ver src/data/split.py). Sirve para el informe.
+Salida: results/prueba_fuga.txt y results/prueba_fuga.json.
 """
 from __future__ import annotations
 
@@ -37,14 +32,14 @@ from sklearn.metrics import f1_score
 from sklearn.model_selection import StratifiedGroupKFold
 
 from src import config
-from src.data.agri_sessions import LEVELS, merge_groups
+from src.data.split import LEVELS, merge_groups
 
-OUT = config.ROOT / "experiments" / "diagnostics" / "out"
+OUT = config.RESULTS
 LABELS = config.QUALITY_CLASSES
 
 
 def crossing_stats(rows: list[dict], level: str) -> dict:
-    """Sesiones de AgriFreshNET repartidas entre particiones en el split v2."""
+    """Sesiones de AgriFreshNET repartidas entre particiones en el reparto actual."""
     mapping = merge_groups(rows, level)
     agri = [row for row in rows if row["source"] == "agrifreshnet"]
     partitions = defaultdict(set)
@@ -64,8 +59,7 @@ def crossing_stats(rows: list[dict], level: str) -> dict:
     }
 
 
-# Configuración que ganó la búsqueda de hiperparámetros sobre v2. Se deja fija para que la
-# única diferencia entre filas de la tabla sea el agrupamiento.
+# Random Forest fijo, para que la única diferencia entre filas de la tabla sea el agrupamiento.
 RF_PARAMS = {"n_estimators": 160, "min_samples_leaf": 5, "max_depth": 20, "max_features": 0.1}
 
 
@@ -89,8 +83,13 @@ def cv_scores(X, y, source, groups, seed: int, folds: int, model) -> dict:
     return scores
 
 
-def main(split_path, features_path, seeds, folds) -> None:
+def main(split_path=config.SPLITS_CSV, features_path=config.FEATURES_NPZ, seeds=(42, 43, 44),
+         folds=3) -> None:
+    seeds = list(seeds)
     split = pd.read_csv(split_path, encoding="utf-8-sig", dtype=str)
+    # Se parte de los grupos SIN unir por sesión, para poder comparar los niveles.
+    if "group_original" in split:
+        split["group"] = split["group_original"]
     rows = split.to_dict("records")
     cache = np.load(features_path, allow_pickle=True)
     by_name = split.set_index("filename")
@@ -106,7 +105,7 @@ def main(split_path, features_path, seeds, folds) -> None:
               "rf_params": {k: v for k, v in model.get_params().items()
                             if k in ("n_estimators", "min_samples_leaf", "max_depth", "max_features")},
               "levels": {}}
-    lines = [f"Escalera de fuga AgriFreshNET | split {split_path.name} | RF {report['rf_params']}",
+    lines = [f"Prueba de fuga AgriFreshNET | reparto {split_path.name} | RF {report['rf_params']}",
              f"CV: StratifiedGroupKFold({folds}) x semillas {seeds}; media ± desv. sobre folds y semillas", ""]
     for level in LEVELS:
         mapping = merge_groups(train_rows, level)
@@ -117,7 +116,7 @@ def main(split_path, features_path, seeds, folds) -> None:
                 pooled[key].extend(values)
         stats = crossing_stats(rows, level)
         summary = {key: {"mean": float(np.mean(v)), "std": float(np.std(v))} for key, v in pooled.items()}
-        report["levels"][level] = {"train_groups": int(len(set(groups))), "crossing_v2": stats, "cv": summary}
+        report["levels"][level] = {"train_groups": int(len(set(groups))), "crossing": stats, "cv": summary}
         lines.append(
             f"{level:>6} | grupos train {len(set(groups)):5d} | "
             f"global {summary['overall']['mean']:.4f}±{summary['overall']['std']:.4f} | "
@@ -132,19 +131,15 @@ def main(split_path, features_path, seeds, folds) -> None:
         delta = report["levels"][level]["cv"]["agrifreshnet_3cl"]["mean"] - base
         lines.append(f"Δ agri ({level} − photo) = {delta:+.4f}")
     OUT.mkdir(parents=True, exist_ok=True)
-    (OUT / "agri_leak_ladder.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
-    (OUT / "agri_leak_ladder.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    (OUT / "prueba_fuga.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    (OUT / "prueba_fuga.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print("\n".join(lines))
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--split", type=lambda p: config.ROOT / p,
-                        default=config.CROPS_DIR / "splits_v2_burst.csv")
-    parser.add_argument("--features", type=lambda p: config.ROOT / p,
-                        default=config.DATA_PROCESSED / "classic_features_v2_burst.npz")
     parser.add_argument("--seeds", type=int, nargs="+", default=[42, 43, 44])
     parser.add_argument("--folds", type=int, default=3)
     args = parser.parse_args()
-    main(args.split, args.features, args.seeds, args.folds)
+    main(seeds=args.seeds, folds=args.folds)

@@ -4,24 +4,24 @@ a partir de una foto cargada o tomada con la cámara.
 
 Fase CRISP-DM: Despliegue
 Uso (desde la raíz del repositorio, con el ambiente activado):
-    streamlit run src/app/app.py
+    streamlit run app/app.py
 
-Toda la lógica de segmentación y predicción vive en src/app/inference.py; este archivo solo
+Toda la lógica de segmentación y predicción vive en src/prediction/predictor.py; este archivo solo
 arma la interfaz. Las fotos no se guardan: se procesan en memoria y se descartan.
 """
 import sys
 from pathlib import Path
 
-# `streamlit run src/app/app.py` pone src/app en sys.path, no la raíz: se agrega para
+# `streamlit run app/app.py` pone app/ en sys.path, no la raíz: se agrega para
 # poder importar el paquete src igual que en el resto del proyecto.
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import streamlit as st  # noqa: E402
 
 from src import config  # noqa: E402
-from src.app.inference import (  # noqa: E402
+from src.prediction.predictor import (  # noqa: E402
     PRODUCT_LABELS_ES,
     QUALITY_LABELS_ES,
     SIZE_LABELS_ES,
@@ -50,7 +50,7 @@ def render_sidebar() -> bool:
     st.sidebar.header("Modelos")
     include_cnn = st.sidebar.toggle(
         "Usar la CNN", value=config.APP_MODEL != "random_forest",
-        help=f"Necesaria para el ensamble. Requiere TensorFlow y {config.APP_CNN_CHECKPOINT}.",
+        help=f"Necesaria para el ensamble. Requiere TensorFlow y models/{config.MODEL_FILES['cnn']}.",
     )
     models, notices = get_models(include_cnn)
     st.sidebar.markdown(f"Decide: **{MODE_NAMES.get(config.APP_MODEL, config.APP_MODEL)}**")
@@ -65,7 +65,7 @@ def render_sidebar() -> bool:
         f1 = "s/d" if model.validation_f1 is None else f"{model.validation_f1:.3f}"
         st.sidebar.markdown(
             f"**{model.name}**  \nF1 macro en validation: {f1}  \n"
-            f"Checkpoint `{model.sha256[:12]}`"
+            f"Archivo `{model.checkpoint.name}`"
         )
         for warning in model.warnings:
             st.sidebar.warning(warning)

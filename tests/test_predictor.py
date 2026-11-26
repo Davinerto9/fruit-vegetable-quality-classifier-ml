@@ -1,8 +1,8 @@
 """
-Pruebas de src/app/inference.py con imágenes sintéticas y un modelo pequeño entrenado aquí.
+Pruebas de src/prediction/predictor.py con imágenes sintéticas y un modelo pequeño entrenado aquí.
 
 Fase CRISP-DM: Despliegue
-Uso: pytest tests/test_inference.py
+Uso: pytest tests/test_predictor.py
 
 No requieren los datasets, los checkpoints reales, Streamlit ni TensorFlow.
 """
@@ -13,9 +13,9 @@ import pytest
 from sklearn.ensemble import RandomForestClassifier
 
 from src import config
-from src.app import inference
+from src.prediction import predictor as inference
 from src.data import segmentation
-from src.features.classic import (
+from src.data.features import (
     FEATURE_NAMES,
     extract_classic_features,
     extract_classic_features_from_arrays,
@@ -111,9 +111,9 @@ def _prediction(key, probabilities):
 
 
 def test_ensemble_is_the_fixed_soft_vote():
-    """p = 0,5·p_RF + 0,5·p_CNN, igual que src/evaluation/model_audit.py."""
+    """p = 0,5·p_RF + 0,5·p_CNN, igual que src/evaluation/evaluate_models.py."""
     rf = _prediction("random_forest", {"good": 0.6, "regular": 0.3, "bad": 0.1})
-    cnn = _prediction("cnn_rgb", {"good": 0.1, "regular": 0.2, "bad": 0.7})
+    cnn = _prediction("cnn", {"good": 0.1, "regular": 0.2, "bad": 0.7})
     final, note = inference.final_decision([rf, cnn], mode="ensemble", cnn_weight=0.5)
     assert note is None and final.model_key == "ensemble"
     assert final.probabilities == pytest.approx({"good": 0.35, "regular": 0.25, "bad": 0.40})
@@ -129,7 +129,7 @@ def test_ensemble_falls_back_to_random_forest_with_a_notice():
 
 def test_single_model_mode_ignores_the_other_model():
     rf = _prediction("random_forest", {"good": 0.6, "regular": 0.3, "bad": 0.1})
-    cnn = _prediction("cnn_rgb", {"good": 0.1, "regular": 0.2, "bad": 0.7})
+    cnn = _prediction("cnn", {"good": 0.1, "regular": 0.2, "bad": 0.7})
     assert inference.final_decision([rf, cnn], mode="random_forest") == (rf, None)
     assert inference.final_decision([rf, cnn], mode="cnn") == (cnn, None)
 
@@ -147,9 +147,9 @@ def tiny_product_model(tmp_path_factory):
     X = rng.random((60, len(FEATURE_NAMES)), dtype=np.float32)
     y = np.array(["orange", "banana", "apple"] * 20)
     model = RandomForestClassifier(n_estimators=5, random_state=config.SEED).fit(X, y)
-    path = tmp_path_factory.mktemp("checkpoints") / "product_rf_t.joblib"
+    path = tmp_path_factory.mktemp("checkpoints") / "fruit_rf_t.joblib"
     joblib.dump({"model": model}, path)
-    handle = inference.load_classic_model(path, key="product_rf", name="Fruta")
+    handle = inference.load_classic_model(path, key="fruit_rf", name="Fruta")
     return inference.ModelHandle(**{**handle.__dict__, "kind": "product"})
 
 

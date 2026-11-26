@@ -13,7 +13,7 @@ El estado que muestra la app es el **promedio 50/50 de las probabilidades del Ra
 
 ## Cómo se eligen los hiperparámetros
 
-- **Modelos clásicos** (`src/training/train_classic.py`): `GridSearchCV` de scikit-learn con `StratifiedGroupKFold(3)` y métrica F1 macro, solo con *train*. Los grupos (fotos de la misma ráfaga o sesión) nunca quedan a la vez en entrenamiento y evaluación de un fold. El mejor modelo se reentrena con todo *train*.
+- **Modelos clásicos** (definidos en `src/models/model_definitions.py`, entrenados en `src/training/train_models.py`): `GridSearchCV` de scikit-learn con `StratifiedGroupKFold(3)` y métrica F1 macro, solo con *train*. Los grupos (fotos de la misma ráfaga o sesión) nunca quedan a la vez en entrenamiento y evaluación de un fold. El mejor modelo se reentrena con todo *train*.
 
   | Modelo | Rejilla |
   | --- | --- |
@@ -22,19 +22,19 @@ El estado que muestra la app es el **promedio 50/50 de las probabilidades del Ra
   | Random Forest (estado) | `min_samples_leaf` ∈ {1, 5, 20} × `max_depth` ∈ {sin límite, 20} × `max_features` ∈ {√p, 0,1} |
   | Random Forest (fruta) | `min_samples_leaf` ∈ {1, 5} × `max_features` ∈ {√p, 0,1} |
 
-- **CNN** (`src/training/train_cnn.py`): 4 bloques Conv 3×3 → BatchNorm → ReLU → MaxPool (32, 64, 128 y 256 filtros), pooling global promedio, *dropout* 0,35 y softmax; 389.667 parámetros. Adam con reducción del learning rate en meseta. La parada temprana usa el 10% de los grupos de *train* (`--es-holdout 0.1`), no validación.
+- **CNN** (mismos archivos): una red pequeña hecha desde cero, sin modelos preentrenados. 4 bloques Conv 3×3 → BatchNorm → ReLU → MaxPool (32, 64, 128 y 256 filtros), pooling global promedio, *dropout* 0,35 y softmax; 389.667 parámetros. Adam con reducción del learning rate en meseta. La parada temprana usa el 10 % de los grupos de *train*, no val. Los ajustes están en `CNN_SETTINGS`; su justificación, en el [notebook 03](../notebooks/03_cnn.ipynb).
 - **Desbalance:** pesos de clase calculados solo con *train*.
 
 ## Cómo llegamos a esta configuración
 
-| Versión | Qué cambió | Resultado en validación (F1 macro del estado) |
-| --- | --- | --- |
-| v1 | Primer reparto de fotos | RF 0,842 y CNN 0,799, **inflados**: fotos casi idénticas de Kaggle quedaban a la vez en entrenamiento y validación. |
-| v2 | Reparto por ráfagas de Kaggle | RF 0,857, CNN de 4 bloques 0,858 y promedio 0,875. La CNN pasó de 3 a 4 bloques porque con 3 no alcanzaba (subajuste); aumentar datos con giros empeoró. Seguía la trampa de AgriFreshNET. |
-| **v3** | Reparto por sesiones de AgriFreshNET y validación usada una sola vez | Pendiente de reentrenar con el [plan simple](plan_simple.md). |
+| Intento de reparto ([preparación](03_data_preparation.md#cómo-llegamos-al-reparto-final)) | Resultado en val (F1 macro del estado) |
+| --- | --- |
+| 1 | RF 0,842 y CNN 0,799, **inflados**: fotos casi idénticas de Kaggle quedaban a la vez en train y val. |
+| 2 | RF 0,857, CNN de 4 bloques 0,858 y promedio 0,875. La CNN pasó de 3 a 4 bloques porque con 3 no alcanzaba (subajuste); aumentar datos con giros empeoró. Seguía la fuga de AgriFreshNET. |
+| **Final** | Pendiente de reentrenar (`python -m src.main entrenar`). |
 
-Las cifras de v1 y v2 solo explican el camino; las de la sustentación son las de v3.
+Las cifras de los intentos 1 y 2 solo explican el camino; las de la sustentación son las del reparto final.
 
 ## Reproducibilidad
 
-Los comandos, en orden y con tiempos, están en el [plan simple](plan_simple.md) (pasos 1 a 6). Los checkpoints se guardan en `experiments/checkpoints/`, fuera de Git por tamaño. Los resultados, en `experiments/results/classic_<tag>.json` y `cnn_rgb_<run>.json`.
+`python -m src.main entrenar` guarda los cinco modelos en `models/` con nombres fijos (`calidad_random_forest.joblib`, `calidad_cnn.keras`, `fruta_random_forest.joblib`, …) y los resúmenes en `results/entrenamiento_clasicos.json` y `results/entrenamiento_cnn.json`. Los modelos se suben a Git para que la app funcione sin reentrenar; si alguno pasa de 100 MB, el entrenamiento lo avisa. Los notebooks [02](../notebooks/02_modelos_clasicos.ipynb) y [03](../notebooks/03_cnn.ipynb) leen esos resúmenes.

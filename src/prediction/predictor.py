@@ -1,10 +1,10 @@
 """
-Inferencia para la app: segmenta una foto, aplica el mismo preprocesamiento del entrenamiento y
-predice la calidad con los checkpoints guardados.
+Predicción para una foto nueva: rechaza la foto si no sirve, dice qué fruta es, su estado y
+su tamaño, con los modelos guardados en models/.
 
 Fase CRISP-DM: Despliegue
 Uso:
-    from src.app.inference import analyze_image, load_models
+    from src.prediction.predictor import analyze_image, load_models
     models, avisos = load_models()               # Random Forest y, si hay TensorFlow, la CNN
     analysis = analyze_image(imagen_bgr, models)
     analysis.final                               # decisión según config.APP_MODEL
@@ -17,10 +17,10 @@ Flujo de analyze_image():
 2. Si el estado no es "ok" (varias frutas, máscara dudosa, escala de grises), la foto se rechaza
    y se explica por qué, en lugar de forzar una clase.
 3. src.data.segmentation.model_inputs(): recorte y máscara de 128x128, igual que en prepare.py.
-4. Atributos clásicos (src.features.classic) para Random Forest; recorte x máscara para la CNN.
+4. Atributos (src.data.features) para los Random Forest; recorte x máscara para la CNN.
 5. Probabilidades por clase en el orden de config.QUALITY_CLASSES y categoría de tamaño.
 6. Decisión final según config.APP_MODEL: voto suave RF + CNN con peso fijo
-   config.APP_ENSEMBLE_CNN_WEIGHT (el mismo que usa src/evaluation/model_audit.py),
+   config.APP_ENSEMBLE_CNN_WEIGHT (el mismo que usa src/evaluation/evaluate_models.py),
    o un solo modelo. Si el modelo pedido no está disponible, se usa el que haya y se avisa.
 
 No se guarda ninguna imagen: todo ocurre en memoria.
@@ -37,7 +37,7 @@ import numpy as np
 
 from src import config
 from src.data import segmentation
-from src.features.classic import extract_classic_features_from_arrays
+from src.data.features import extract_classic_features_from_arrays
 
 # Textos que la app muestra cuando rechaza una foto.
 REJECTION_MESSAGES = {
@@ -65,7 +65,7 @@ SIZE_LABELS_ES = {"small": "Pequeño", "medium": "Mediano", "large": "Grande"}
 class ModelHandle:
     """Un modelo cargado y lo necesario para describirlo en la interfaz."""
 
-    key: str                      # "random_forest" o "cnn_rgb"
+    key: str                      # "random_forest", "cnn" o "fruit_rf"
     name: str                     # nombre para mostrar
     kind: str                     # "classic", "cnn" o "product"
     estimator: object             # objeto de scikit-learn o modelo de Keras
@@ -117,37 +117,32 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _validation_f1(result_stem: str) -> float | None:
-    """
-    F1 macro de validation registrado para un checkpoint: en experiments/results/<stem>.json
-    o, para los modelos de src.training.train_classic, en classic_<tag>.json.
-    """
-    path = config.RESULTS / f"{result_stem}.json"
-    if not path.is_file():
-        for summary in sorted(config.RESULTS.glob("classic_*.json")):
-            try:
-                models = json.loads(summary.read_text(encoding="utf-8"))["models"]
-            except (KeyError, ValueError):
-                continue
-            for item in models.values():
-                if Path(item.get("checkpoint", "")).stem == result_stem:
-                    return float(item["validation"]["f1_macro"])
-        return None
+def _training_report(name: str) -> dict:
+    path = config.RESULTS / name
     try:
-        saved = json.loads(path.read_text(encoding="utf-8"))
-        if "validation" in saved:
-            return float(saved["validation"]["f1_macro"])
-        return float(saved["models"]["ensemble_0.5"]["overall"]["f1_macro"])  # JSON del ensamble
-    except (KeyError, ValueError, TypeError):
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def _validation_f1(key: str) -> float | None:
+    """F1 macro de val registrado al entrenar (results/entrenamiento_*.json), si existe."""
+    try:
+        if key == "cnn":
+            return float(_training_report("entrenamiento_cnn.json")["validation"]["f1_macro"])
+        item = _training_report("entrenamiento_clasicos.json")["models"][key]["validation"]
+        return float(item["f1_macro"])
+    except (KeyError, TypeError, ValueError):
         return None
 
 
 def ensemble_validation_f1() -> float | None:
-    """F1 de validation del ensamble formado por los checkpoints de la app, si se evaluó."""
-    # Nombre del JSON de un ensamble evaluado: ensemble_rf_<tag RF>_cnn_<run CNN>.json
-    rf_tag = Path(config.APP_RF_CHECKPOINT).stem.removeprefix("random_forest_")
-    cnn_run = Path(config.APP_CNN_CHECKPOINT).stem.removeprefix("cnn_rgb_")
-    return _validation_f1(f"ensemble_rf_{rf_tag}_cnn_{cnn_run}")
+    """F1 de val del ensamble, si ya se corrió python -m src.main evaluar."""
+    try:
+        report = _training_report("evaluacion_val.json")
+        return float(report["models"]["ensemble"]["f1_macro"])
+    except (KeyError, TypeError, ValueError):
+        return None
 
 
 def load_classic_model(checkpoint: Path, key: str = "random_forest",
@@ -182,7 +177,7 @@ def load_classic_model(checkpoint: Path, key: str = "random_forest",
         )
     return ModelHandle(key=key, name=name, kind="classic", estimator=estimator,
                        checkpoint=checkpoint, sha256=_sha256(checkpoint),
-                       validation_f1=_validation_f1(checkpoint.stem), warnings=notes)
+                       validation_f1=_validation_f1(key), warnings=notes)
 
 
 def load_cnn_model(checkpoint: Path) -> ModelHandle:
@@ -190,44 +185,36 @@ def load_cnn_model(checkpoint: Path) -> ModelHandle:
     import tensorflow as tf
 
     model = tf.keras.models.load_model(checkpoint, compile=False)
-    return ModelHandle(key="cnn_rgb", name="CNN RGB", kind="cnn", estimator=model,
+    return ModelHandle(key="cnn", name="CNN", kind="cnn", estimator=model,
                        checkpoint=checkpoint, sha256=_sha256(checkpoint),
-                       validation_f1=_validation_f1(checkpoint.stem))
+                       validation_f1=_validation_f1("cnn"))
 
 
 def load_models(include_cnn: bool = True) -> tuple[list[ModelHandle], list[str]]:
     """
-    Carga los modelos disponibles en config.CHECKPOINTS.
+    Carga los modelos de config.MODELS_DIR que usa la app.
 
     Retorna:
         (modelos cargados, avisos para mostrar). Un modelo que falta o no carga se informa
         en los avisos en lugar de detener la app.
     """
     models, notices = [], []
-    rf_path = config.CHECKPOINTS / config.APP_RF_CHECKPOINT
-    if rf_path.is_file():
+    train_hint = "Entrena con `python -m src.main entrenar`."
+    for key, name, kind in (("random_forest", "Random Forest", "classic"),
+                            ("fruit_rf", "Fruta (Random Forest)", "product")):
+        path = config.MODELS_DIR / config.MODEL_FILES[key]
+        if not path.is_file():
+            notices.append(f"No se encontró models/{path.name}. {train_hint}")
+            continue
         try:
-            models.append(load_classic_model(rf_path))
+            handle = load_classic_model(path, key=key, name=name)
+            models.append(ModelHandle(**{**handle.__dict__, "kind": kind}))
         except Exception as error:  # noqa: BLE001 - se muestra al usuario
-            notices.append(f"No se pudo cargar Random Forest: {error}")
-    else:
-        notices.append(f"No se encontró {rf_path.name} en {config.CHECKPOINTS}. Entrena con "
-                       "`python -m src.training.train_classic` (ver docs/plan_simple.md).")
+            notices.append(f"No se pudo cargar {name}: {error}")
 
-    product_path = config.CHECKPOINTS / config.APP_PRODUCT_CHECKPOINT
-    if product_path.is_file():
-        try:
-            handle = load_classic_model(product_path, key="product_rf", name="Fruta (Random Forest)")
-            models.append(ModelHandle(**{**handle.__dict__, "kind": "product"}))
-        except Exception as error:  # noqa: BLE001
-            notices.append(f"No se pudo cargar el modelo de fruta: {error}")
-    else:
-        notices.append(f"No se encontró {product_path.name}: la app no identificará la fruta. "
-                       "Entrena con `python -m src.training.train_classic`.")
-
-    cnn_path = config.CHECKPOINTS / config.APP_CNN_CHECKPOINT
+    cnn_path = config.MODELS_DIR / config.MODEL_FILES["cnn"]
     if include_cnn and not cnn_path.is_file():
-        notices.append(f"No se encontró {cnn_path.name}: la CNN no está disponible.")
+        notices.append(f"No se encontró models/{cnn_path.name}: la CNN no está disponible.")
     elif include_cnn:
         try:
             models.append(load_cnn_model(cnn_path))
@@ -271,7 +258,7 @@ def predict_product(model: ModelHandle, crop_rgb: np.ndarray, mask: np.ndarray) 
 
 
 def predict_cnn(model: ModelHandle, crop_rgb: np.ndarray, mask: np.ndarray) -> dict[str, float]:
-    # Igual que train_cnn._dataset: recorte RGB / 255 con el fondo anulado por la máscara.
+    # Igual que train_models.image_dataset: recorte RGB / 255 con el fondo en negro.
     tensor = crop_rgb.astype(np.float32) / 255.0 * (mask > 127)[..., None]
     probabilities = np.asarray(model.estimator.predict(tensor[None], verbose=0))[0]
     return {label: float(probabilities[index])
@@ -307,7 +294,7 @@ def final_decision(predictions: list[Prediction], mode: str | None = None,
     mode = mode or config.APP_MODEL
     weight = config.APP_ENSEMBLE_CNN_WEIGHT if cnn_weight is None else cnn_weight
     rf = next((p for p in predictions if p.model_key == "random_forest"), None)
-    cnn = next((p for p in predictions if p.model_key == "cnn_rgb"), None)
+    cnn = next((p for p in predictions if p.model_key == "cnn"), None)
     if mode == "ensemble" and rf and cnn:
         return combine(rf, cnn, weight), None
     if mode == "cnn" and cnn:

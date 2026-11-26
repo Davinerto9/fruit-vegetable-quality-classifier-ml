@@ -34,7 +34,7 @@ Se combinan Fruit Quality Classification de Kaggle, AgriFreshNET y fotos propias
 | --- | --- |
 | Comprensión del negocio | Alcance, criterios, riesgos, ética e impactos definidos. |
 | Comprensión de los datos | Inventario y EDA disponibles; la clase regular viene casi toda de AgriFreshNET. |
-| Preparación | Segmentación y reparto v3 sin fotos gemelas entre particiones. |
-| Modelado | Hiperparámetros con `GridSearchCV` por grupos; CNN con parada temprana dentro de train. Falta reentrenar en v3. |
+| Preparación | Segmentación y reparto final sin fotos gemelas entre particiones. |
+| Modelado | Hiperparámetros con `GridSearchCV` por grupos; CNN con parada temprana dentro de train. Falta reentrenar con el reparto final. |
 | Evaluación | Validación, fotos de celular y prueba, una vez cada una. Pendiente. |
 | Despliegue | App Streamlit que muestra fruta, estado y tamaño relativo, y rechaza fotos que no puede leer. |

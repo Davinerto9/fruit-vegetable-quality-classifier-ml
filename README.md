@@ -2,9 +2,9 @@
 
 Proyecto final del curso **Algoritmos y Programación III**, Universidad Icesi, Cali, Colombia (2026-2).
 
-**Estado del proyecto:** modelos listos para reentrenar sobre el reparto final (v3); ver el [plan simple](docs/plan_simple.md).
+**Estado del proyecto:** código listo; falta entrenar con todos los datos y evaluar (ver [Cómo usar](#cómo-usar)).
 
-[Plan simple: qué hace el sistema y cómo reproducirlo](docs/plan_simple.md) · [Metodología CRISP-DM](docs/crisp-dm.md) · [Criterios de calidad](docs/criterios-calidad.md)
+[Plan simple: qué hace el sistema y por qué es honesto](docs/plan_simple.md) · [Metodología CRISP-DM](docs/crisp-dm.md) · [Criterios de calidad](docs/criterios-calidad.md)
 
 ## Objetivo
 A partir de una foto de **una** fruta o verdura sobre fondo uniforme, el sistema dice:
@@ -13,7 +13,7 @@ A partir de una foto de **una** fruta o verdura sobre fondo uniforme, el sistema
 - **Su estado:** buena (`good`), regular (`regular`) o mala (`bad`), según los [criterios de anotación](docs/criterios-calidad.md).
 - **Su tamaño relativo:** pequeño, mediano o grande según cuánto ocupa la foto (no centímetros).
 
-Seguimos la metodología **CRISP-DM**. La fruta la identifica un Random Forest; el estado, el promedio de un Random Forest y una red convolucional de 4 bloques, con la regresión logística y la SVM lineal como comparación. Los hiperparámetros se eligen con `GridSearchCV` y validación cruzada por grupos, de modo que fotos casi iguales nunca quedan a la vez en entrenamiento y evaluación ([por qué importa](docs/03_data_preparation.md#versiones-del-reparto-v1-v2-y-v3)). La app de **Streamlit** recibe una foto o la cámara; consulta [Despliegue](docs/06_deployment.md).
+Seguimos la metodología **CRISP-DM**. La fruta la identifica un Random Forest; el estado, el promedio de un Random Forest y una red convolucional de 4 bloques, con la regresión logística y la SVM lineal como comparación. Los hiperparámetros se eligen con `GridSearchCV` y validación cruzada por grupos, de modo que fotos casi iguales nunca quedan a la vez en entrenamiento y evaluación ([por qué importa](docs/03_data_preparation.md#cómo-llegamos-al-reparto-final)). La app de **Streamlit** recibe una foto o la cámara; consulta [Despliegue](docs/06_deployment.md).
 
 ## Integrantes
 
@@ -25,19 +25,33 @@ Seguimos la metodología **CRISP-DM**. La fruta la identifica un Random Forest; 
 
 ## Estructura del repositorio
 ```
-data/raw/          imágenes de Kaggle y AgriFreshNET (no se suben a git)
-data/own/          fotos propias + labels.csv
-data/processed/    índices, particiones y características derivadas
-data/external/     fotos de celular del pool de la clase (no se suben a git)
-src/data/          inventario, segmentación, recortes y reparto (split v1 → v2 → v3)
-src/features/      atributos de color, textura y forma
-src/training/      train_classic.py (clásicos + fruta) y train_cnn.py
-src/evaluation/    validación y prueba (model_audit.py), fotos de celular (external_eval.py)
-src/app/           app Streamlit (app.py) e inferencia (inference.py)
-notebooks/         análisis exploratorio
-experiments/       checkpoints/, results/, logs/; diagnostics/ con la prueba de fuga
-docs/              documentación extendida
-tests/             pruebas con pytest
+app/app.py                      la aplicación (Streamlit)
+models/                         los 5 modelos entrenados (se crean al entrenar y se suben a Git)
+results/                        métricas en JSON, predicciones y figures/ para el informe
+notebooks/
+  01_eda.ipynb                  cuántas fotos hay de cada fruta, estado y fuente
+  02_modelos_clasicos.ipynb     rejillas de hiperparámetros y resultados de los clásicos
+  03_cnn.ipynb                  arquitectura y curvas de aprendizaje de la CNN
+  04_resultados.ipynb           comparación final, matrices de confusión, fuga, celular
+src/
+  main.py                       un comando por paso: python -m src.main <paso>
+  config.py                     rutas, clases, semilla y parámetros (un solo lugar)
+  data/
+    inventory.py                1. lista todas las fotos con su fruta, estado y grupo
+    segmentation.py             separa la fruta del fondo; rechaza fotos que no sirven
+    prepare.py                  2. aplica la segmentación y guarda recortes de 128x128
+    split.py                    3. reparte en train / val / test por grupos (sin fuga)
+    features.py                 4. los 359 atributos de color, textura y forma
+  models/model_definitions.py   los 5 modelos y sus rejillas de hiperparámetros
+  training/train_models.py      5. GridSearchCV por grupos + CNN; guarda en models/
+  prediction/predictor.py       foto nueva -> rechazo, fruta, estado y tamaño (lo usa la app)
+  evaluation/
+    evaluate_models.py          6. métricas en val; test una sola vez, con candado
+    leak_check.py               prueba de fuga (opcional)
+    phone_test.py               prueba con fotos de celular etiquetadas a ciegas
+data/                           raw/ (descargas), own/ (fotos propias), processed/ (derivados)
+docs/                           documentación CRISP-DM
+tests/                          pruebas con pytest
 ```
 
 ## Instalación
@@ -66,46 +80,57 @@ pip install -r requirements.txt
 
 Las fotos propias del equipo van en `data/own/`, con sus etiquetas en `data/own/labels.csv`.
 
-Genera el inventario local después de preparar las tres fuentes:
+## Cómo usar
 
+Todos los comandos se corren desde la raíz del repositorio, con el ambiente activado.
+
+### Probar la app (con los modelos ya entrenados de `models/`)
 ```bash
-python -m src.data.inventory
+streamlit run app/app.py
+```
+Sube una foto de **una** fruta sobre un fondo liso. La app dice qué fruta es, su estado y su tamaño, o explica por qué rechaza la foto. Sin TensorFlow funciona solo con el Random Forest. Detalles en [Despliegue](docs/06_deployment.md).
+
+### Rehacer todo desde los datos
+Con los datos descargados (ver arriba), un solo comando corre los pasos 1 a 6 en orden:
+```bash
+python -m src.main todo
+```
+O paso por paso, para entender qué hace cada uno:
+
+| # | Comando | Qué hace | Deja |
+|---|---|---|---|
+| 1 | `python -m src.main inventario` | Lista cada foto con su fruta, estado y grupo | `data/processed/index.csv` |
+| 2 | `python -m src.main recortar` | Separa la fruta del fondo y la recorta a 128x128 (~30 min) | `data/processed/crops/` |
+| 3 | `python -m src.main dividir` | Reparte 70/15/15 en train, val y test, sin separar fotos hermanas | `crops/splits.csv` |
+| 4 | `python -m src.main atributos` | Calcula los 359 atributos de cada recorte | `data/processed/features.npz` |
+| 5 | `python -m src.main entrenar` | Elige hiperparámetros con validación cruzada y entrena (clásicos ~20 min; CNN ~45 min con GPU) | `models/` |
+| 6 | `python -m src.main evaluar` | Mide todos los modelos en val | `results/evaluacion_val.json` |
+
+Después se abren los notebooks 02 a 04 para ver tablas y gráficas.
+
+### Al final, una sola vez
+```bash
+python -m src.main fuga                            # (opcional) cuánto se inflaba la nota sin agrupar
+python -m src.main congelar                        # anota la huella de modelos y reparto
+python -m src.main evaluar --test --confirmo       # test: no se puede repetir
+```
+Y la prueba con fotos de celular del curso, etiquetadas a ciegas (paso a paso en [`src/evaluation/phone_test.py`](src/evaluation/phone_test.py)):
+```bash
+python -m src.main celular ingerir      # fotos en data/external/raw/<Fruta>/
+python -m src.main celular hojas        # luego llenar data/external/labeling/annotator_A.csv
+python -m src.main celular finalizar
+python -m src.main celular evaluar --confirmo
 ```
 
-El comando escribe `data/processed/index.csv` con una fila por archivo y rutas relativas al repositorio. Consulta los [campos y criterios de agrupación](docs/criterios-calidad.md#inventario-de-imágenes) antes de usar el índice.
-
-El siguiente comando comprueba la segmentación y genera recortes de las fotos propias y una muestra externa.
-
-```bash
-python -m src.data.prepare --pilot
-```
-
-Puedes consultar las decisiones de preparación en `data/processed/pilot-crops/manifest.csv`. Al ejecutar el comando sin `--pilot`, se prepara el inventario completo en `data/processed/crops/`.
-
-Después de revisar los recortes candidatos, sigue el [plan simple](docs/plan_simple.md): reparto sin fotos gemelas entre particiones (`python -m src.data.split`, `split_v2` y `split_v3 --choose`), entrenamiento, validación, fotos de celular y prueba, con un comando por paso. Los grupos marcados en la [revisión visual](data/annotations/segmentation_exclusions.csv) se excluyen, incluidas sus variantes.
-
-## Uso
-Todos los comandos se ejecutan desde la raíz del repositorio, con el ambiente activado.
-
-**Notebooks:**
+### Notebooks y pruebas
 ```bash
 jupyter lab
+pytest
 ```
-Abre [el notebook de análisis exploratorio](notebooks/01_eda.ipynb) después de generar el inventario. Incluye conteos por fuente, producto y clase, el desbalance por archivo y grupo, y ejemplos de las tres calidades. Si usas VS Code u otro Jupyter instalado fuera del ambiente, registra el kernel una sola vez y luego selecciona "Python (fruit-quality)":
+Si usas VS Code u otro Jupyter instalado fuera del ambiente, registra el kernel una sola vez y selecciona "Python (fruit-quality)":
 ```bash
 python -m ipykernel install --user --name fruit-quality --display-name "Python (fruit-quality)"
 ```
-
-**Pruebas:**
-```bash
-pytest
-```
-
-**App** (requiere los modelos del [plan simple](docs/plan_simple.md): `random_forest_v3_week.joblib`, `product_rf_v3_week.joblib` y, para el promedio con la CNN, `cnn_rgb_v3_week.keras` con TensorFlow):
-```bash
-streamlit run src/app/app.py
-```
-Detalles de arquitectura, decisiones y pruebas de uso en [Despliegue](docs/06_deployment.md).
 
 ## Créditos
 

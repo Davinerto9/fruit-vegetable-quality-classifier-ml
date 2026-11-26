@@ -20,8 +20,9 @@ Constantes:
 - RYANDPARK_DIR, AGRIFRESHNET_DIR: carpeta de cada dataset externo.
 - OWN_LABELS, INDEX_CSV, CROPS_DIR: etiquetas propias, índice de todas las
   imágenes y recortes generados por la segmentación.
-- CHECKPOINTS, RESULTS, FIGURES, LOGS: modelos entrenados, métricas,
-  gráficas para el informe y registros del entrenamiento.
+- SPLITS_CSV, FEATURES_NPZ: partición train/val/test y atributos de cada recorte.
+- MODELS_DIR, MODEL_FILES: carpeta y nombres fijos de los modelos entrenados.
+- RESULTS, FIGURES, LOGS: métricas, gráficas para el informe y registros.
 - IMAGE_EXTENSIONS: extensiones de imagen que se leen (en minúscula).
 - SEED: semilla para todo proceso aleatorio (particiones, modelos, CNN).
 - IMG_SIZE: tamaño (alto, ancho) de entrada de los modelos.
@@ -50,7 +51,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DATA_RAW = ROOT / "data" / "raw"
 # Fotos tomadas por el equipo y su archivo labels.csv.
 DATA_OWN = ROOT / "data" / "own"
-# Archivos derivados: index.csv, splits.csv, features.csv y recortes.
+# Archivos derivados: index.csv, recortes, splits.csv y features.npz.
 DATA_PROCESSED = ROOT / "data" / "processed"
 
 # Kaggle "Fruit Quality Classification" (ryandpark), dataset de referencia del curso.
@@ -69,14 +70,24 @@ INDEX_CSV = DATA_PROCESSED / "index.csv"
 # Recortes cuadrados de la fruta generados por la segmentación.
 CROPS_DIR = DATA_PROCESSED / "crops"
 
-# Modelos entrenados (.joblib para ML clásico, .keras para la CNN).
-CHECKPOINTS = ROOT / "experiments" / "checkpoints"
-# Métricas e hiperparámetros de cada experimento.
-RESULTS = ROOT / "experiments" / "results"
-# Gráficas listas para el informe IEEE.
-FIGURES = ROOT / "experiments" / "figures"
-# Registros del entrenamiento (historial por época).
-LOGS = ROOT / "experiments" / "logs"
+# Partición final train/val/test (src/data/split.py) y atributos de cada recorte.
+SPLITS_CSV = CROPS_DIR / "splits.csv"
+FEATURES_NPZ = DATA_PROCESSED / "features.npz"
+
+# Modelos entrenados. Se guardan aquí al entrenar (python -m src.main entrenar) y se suben a
+# Git para que la app funcione sin reentrenar.
+MODELS_DIR = ROOT / "models"
+MODEL_FILES = {
+    "logistic_regression": "calidad_regresion_logistica.joblib",
+    "svm_linear": "calidad_svm_lineal.joblib",
+    "random_forest": "calidad_random_forest.joblib",
+    "cnn": "calidad_cnn.keras",
+    "fruit_rf": "fruta_random_forest.joblib",
+}
+# Métricas, predicciones, gráficas y registros del entrenamiento.
+RESULTS = ROOT / "results"
+FIGURES = RESULTS / "figures"
+LOGS = RESULTS / "logs"
 
 # Extensiones de imagen aceptadas; se comparan en minúscula (hay .jpg y .JPG).
 IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png")
@@ -170,12 +181,6 @@ SIZE_THRESHOLDS = {
 
 # --- Aplicación ----------------------------------------------------------------
 
-# Checkpoints que usa la app (en CHECKPOINTS), entrenados sobre el split v3 (sesiones de
-# AgriFreshNET completas por partición; ver docs/plan_simple.md). Si split_v3 --choose elige
-# otro nivel que "week", cambia el sufijo.
-APP_RF_CHECKPOINT = "random_forest_v3_week.joblib"          # calidad (train_classic)
-APP_CNN_CHECKPOINT = "cnn_rgb_v3_week.keras"                # calidad (train_cnn --run-name v3_week)
-APP_PRODUCT_CHECKPOINT = "product_rf_v3_week.joblib"        # fruta (train_classic)
 # Probabilidad mínima para afirmar qué fruta es; por debajo, la app dice que no la reconoce.
 APP_MIN_PRODUCT_CONFIDENCE = 0.5
 # Modelo que decide la clase en la app: "ensemble" (voto suave RF + CNN), "random_forest" o "cnn".

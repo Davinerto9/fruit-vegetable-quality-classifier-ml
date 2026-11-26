@@ -2,7 +2,7 @@
 Pruebas de las fotos de celular: ingesta, etiquetado ciego, etiquetas finales y evaluación.
 
 Fase CRISP-DM: Preparación de datos / Evaluación
-Uso: pytest tests/test_external_pool.py
+Uso: pytest tests/test_phone_test.py
 """
 import csv
 
@@ -12,8 +12,7 @@ import pytest
 from PIL import Image
 
 from src import config
-from src.data import external_pool
-from src.evaluation import external_eval
+from src.evaluation import phone_test
 
 
 def _photo(path, color=(255, 140, 0), size=(400, 300), center=(200, 150), radius=70,
@@ -45,14 +44,14 @@ def pool(tmp_path):
     cv2.circle(image, (300, 150), 50, (0, 140, 255), -1)
     cv2.imwrite(str(raw / "Orange" / "two.jpg"), image)
     out = tmp_path / "external"
-    external_pool.ingest(raw, out)
-    return out, external_pool.read_manifest(out)
+    phone_test.ingest(raw, out)
+    return out, phone_test.read_manifest(out)
 
 
 def test_exif_orientation_is_applied(tmp_path):
     path = tmp_path / "rot.jpg"
     _photo(path, size=(400, 300), orientation=6)  # rotar 90°: la imagen mostrada es vertical
-    image, meta = external_pool.read_photo(path)
+    image, meta = phone_test.read_photo(path)
     assert image.shape[:2] == (400, 300)
     assert meta["model"] == "iPhone 13" and meta["datetime"].startswith("2026:11:20")
 
@@ -74,12 +73,12 @@ def test_ingest_builds_blind_manifest(pool):
 def test_ingest_refuses_to_run_twice(pool, tmp_path):
     out, _ = pool
     with pytest.raises(FileExistsError):
-        external_pool.ingest(tmp_path / "raw", out)
+        phone_test.ingest(tmp_path / "raw", out)
 
 
 def test_sheets_are_blind_and_only_known_fruits(pool):
     out, rows = pool
-    external_pool.sheets(out)
+    phone_test.sheets(out)
     test_ids = {r["blind_id"] for r in rows if r["status"] == "ok" and r["in_scope"] == "True"}
     for annotator in ("A", "B"):
         with (out / "labeling" / f"annotator_{annotator}.csv").open(encoding="utf-8") as file:
@@ -107,36 +106,36 @@ def _fill(path, labels):
 
 def test_single_annotator_is_enough(pool):
     out, _ = pool
-    external_pool.sheets(out)
+    phone_test.sheets(out)
     lab = out / "labeling"
     ids = [r["blind_id"] for r in _fill(lab / "annotator_A.csv", lambda i: "good")]
-    path = external_eval.finalize(lab, out)
+    path = phone_test.finalize(lab, out)
     final = list(csv.DictReader(path.open(encoding="utf-8")))
     assert [r["blind_id"] for r in final] == sorted(ids)
     assert {r["source_of_label"] for r in final} == {"A"}
-    assert len(external_eval.evaluation_rows(out)) == len(ids)
+    assert len(phone_test.evaluation_rows(out)) == len(ids)
 
 
 def test_two_annotators_kappa_and_adjudication(pool):
     out, _ = pool
-    external_pool.sheets(out)
+    phone_test.sheets(out)
     lab = out / "labeling"
     ids = [r["blind_id"] for r in _fill(lab / "annotator_A.csv", lambda i: "good")]
     disagree = ids[0]
     _fill(lab / "annotator_B.csv", lambda i: "bad" if i == disagree else "good")
-    result = external_eval.agreement(lab)
+    result = phone_test.agreement(lab)
     assert result["disagreements"] == 1 and result["n_both"] == len(ids)
     with pytest.raises(ValueError, match="adjudicar"):
-        external_eval.finalize(lab, out)
+        phone_test.finalize(lab, out)
     _fill(lab / "to_adjudicate.csv", lambda i: "regular")
-    final = list(csv.DictReader(external_eval.finalize(lab, out).open(encoding="utf-8")))
+    final = list(csv.DictReader(phone_test.finalize(lab, out).open(encoding="utf-8")))
     resolved = next(r for r in final if r["blind_id"] == disagree)
     assert resolved["quality"] == "regular" and resolved["source_of_label"] == "adjudicated"
 
 
 def test_evaluation_requires_confirmation():
-    with pytest.raises(ValueError, match="confirm"):
-        external_eval.evaluate(confirm=False)
+    with pytest.raises(ValueError, match="confirmo"):
+        phone_test.evaluate(confirm=False)
 
 
 def test_session_bootstrap_interval_contains_point_estimate():
@@ -144,13 +143,13 @@ def test_session_bootstrap_interval_contains_point_estimate():
     y = np.asarray(config.QUALITY_CLASSES * 40)
     pred = np.where(rng.random(len(y)) < 0.8, y, "regular")
     sessions = np.asarray([f"s{i % 12}" for i in range(len(y))])
-    lo, hi = external_eval.session_bootstrap(y, pred, sessions, external_eval.quality_f1, n=300)
+    lo, hi = phone_test.session_bootstrap(y, pred, sessions, phone_test.quality_f1, n=300)
     from sklearn.metrics import f1_score
     point = f1_score(y, pred, labels=config.QUALITY_CLASSES, average="macro")
     assert lo <= point <= hi
 
 
 def test_heic_without_pillow_heif_explains_what_to_install(tmp_path, monkeypatch):
-    monkeypatch.setattr(external_pool, "_register_heif", lambda: False)
+    monkeypatch.setattr(phone_test, "_register_heif", lambda: False)
     with pytest.raises(RuntimeError, match="pillow-heif"):
-        external_pool.read_photo(tmp_path / "x.HEIC")
+        phone_test.read_photo(tmp_path / "x.HEIC")

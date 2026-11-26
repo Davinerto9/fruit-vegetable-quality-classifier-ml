@@ -1,9 +1,29 @@
-"""Atributos visuales clásicos calculados sobre el recorte y la máscara de la fruta."""
+"""
+Los 359 atributos que usan los modelos clásicos, calculados solo sobre los píxeles de la fruta.
 
+Fase CRISP-DM: Preparación de datos
+Uso: python -m src.main atributos      (o python -m src.data.features)
+
+Qué se mide en cada recorte de 128x128 (el fondo se ignora gracias a la máscara):
+    Color (96):   histograma de 16 barras para cada canal R, G, B, H, S y V. Una fruta
+                  podrida cambia de color (manchas cafés, menos saturación).
+    Textura (256): histograma LBP. Cada píxel se compara con sus 8 vecinos y se anota un
+                  número de 0 a 255; las manchas, arrugas y moho cambian esta distribución.
+    Forma (7):    proporciones de la caja, relleno, área, perímetro, circularidad,
+                  alargamiento y bordes. Ayudan sobre todo a reconocer qué fruta es.
+
+No hay nada que "entrenar" aquí: son fórmulas fijas, así que se calculan una vez para todos
+los recortes y se guardan en data/processed/features.npz.
+"""
+import argparse
+import csv
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 
 import numpy as np
 from PIL import Image
+
+from src import config
 
 COLOR_BINS = 16
 LBP_BINS = 256
@@ -152,3 +172,45 @@ def extract_classic_features_from_arrays(rgb: np.ndarray, mask: np.ndarray,
     if features.shape[0] != len(FEATURE_NAMES) or not np.isfinite(features).all():
         raise ValueError(f"Vector de atributos inválido: {name}")
     return features.astype(np.float32, copy=False)
+
+
+def build(split_path: Path = config.SPLITS_CSV, output_path: Path = config.FEATURES_NPZ) -> Path:
+    """Calcula los atributos de cada recorte de splits.csv y los guarda en un .npz."""
+    with split_path.open(encoding="utf-8-sig", newline="") as file:
+        rows = list(csv.DictReader(file))
+    if not rows:
+        raise ValueError(f"El reparto está vacío: {split_path}")
+    filenames = [row["filename"] for row in rows]
+    if len(filenames) != len(set(filenames)):
+        raise ValueError("El reparto contiene archivos repetidos.")
+
+    matrix = np.empty((len(rows), len(FEATURE_NAMES)), dtype=np.float32)
+    for index, row in enumerate(rows, start=1):
+        matrix[index - 1] = extract_classic_features(config.CROPS_DIR / row["crop"],
+                                                     config.CROPS_DIR / row["crop_mask"])
+        if index % 2000 == 0:
+            print(f"{index}/{len(rows)} recortes procesados", flush=True)
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = NamedTemporaryFile(dir=output_path.parent, prefix=f".{output_path.stem}-",
+                                   suffix=".npz", delete=False)
+    temporary_path = Path(temporary.name)
+    temporary.close()
+    try:
+        np.savez_compressed(temporary_path, X=matrix,
+                            feature_names=np.asarray(FEATURE_NAMES, dtype=str),
+                            filenames=np.asarray(filenames, dtype=str))
+        temporary_path.replace(output_path)
+    finally:
+        temporary_path.unlink(missing_ok=True)
+    print(f"Atributos guardados en {output_path} ({len(rows)} recortes x {len(FEATURE_NAMES)})")
+    return output_path
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__,
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--split", type=Path, default=config.SPLITS_CSV)
+    parser.add_argument("--output", type=Path, default=config.FEATURES_NPZ)
+    args = parser.parse_args()
+    build(args.split, args.output)

@@ -37,37 +37,36 @@ Las fuentes se normalizan a las clases good, regular y bad, conservando proceden
 
 El split busca proporciones aproximadas de 70/15/15 para entrenamiento, validación y prueba, con semilla 42. Cada grupo se asigna completo a una sola partición. Se verifican intersecciones, cobertura por calidad, fuente y producto, exclusiones y distribución obtenida. La validación cruzada también respeta grupos. Cualquier escalado, selección de atributos, cálculo de pesos de clase y aumento de datos se ajusta exclusivamente con entrenamiento.
 
-### Versiones del reparto: v1, v2 y v3
+### Cómo llegamos al reparto final
 
-Las tres versiones usan **los mismos recortes**; solo cambia qué fotos se consideran "la misma" y, por tanto, deben quedar juntas en *train*, validación o prueba.
+Los tres intentos usaron **los mismos recortes**; solo cambió qué fotos se consideran "la misma" y, por tanto, deben quedar juntas en *train*, val o test. Cada vez que encontramos fotos "gemelas" repartidas, agrupamos más grueso.
 
-| Versión | Qué se agrupa | Problema que corrige | Archivo |
-| --- | --- | --- | --- |
-| v1 | Una foto con sus copias aumentadas | — | `splits.csv` (`src/data/split.py`) |
-| v2 | Además, las ráfagas de Kaggle (fotos tomadas segundos seguidos) | En v1, el 99% de las fotos de Kaggle en validación tenía una gemela en entrenamiento; el F1 de Kaggle subía unos 3,5 puntos (0,968 frente a 0,932). | `splits_v2_burst.csv` (`src/data/split_v2.py`) |
-| **v3** | Además, las sesiones de AgriFreshNET (misma fruta y semana) | AgriFreshNET fotografía las mismas piezas durante semanas (carpetas `Fresh X(1-9)`, `Semi fresh X(9-20)`, `Rotten X(24-35)`: días desde la compra). En validación v2, 727 grupos de AgriFreshNET eran en realidad 82 sesiones de semana. | `splits_v3_<nivel>.csv` (`src/data/split_v3.py`) |
+| Intento | Qué se agrupa | Qué problema encontramos |
+| --- | --- | --- |
+| 1 | Una foto con sus copias aumentadas | El 99 % de las fotos de Kaggle en val tenía una gemela (misma ráfaga, segundos de diferencia) en train; el F1 de Kaggle subía unos 3,5 puntos (0,968 frente a 0,932). |
+| 2 | Además, las ráfagas de Kaggle | AgriFreshNET fotografía las mismas piezas durante semanas (carpetas `Fresh X(1-9)`, `Semi fresh X(9-20)`, `Rotten X(24-35)`: días desde la compra). En val, 727 grupos de AgriFreshNET eran en realidad 82 semanas de fotos. |
+| **Final** | Además, las fotos de AgriFreshNET del mismo producto y la misma **semana** | — |
 
-| | v1 | v2 |
+| | Intento 1 | Intento 2 |
 | --- | ---: | ---: |
 | Recortes | 23.687 | 23.543 |
 | Grupos | 13.192 | 5.677 |
 | train / val / test (recortes) | 16.456 / 3.557 / 3.674 | 16.272 / 3.795 / 3.476 |
 | Ráfagas de Kaggle repartidas | 645 | 0 |
 
-v3 se construye a partir de v2 (por eso se conservan los tres scripts). Elige el agrupamiento más amplio (semana, luego día, luego minuto) que siga dejando las tres calidades en cada partición y las proporciones 70/15/15 con un desvío de hasta 5 puntos. El F1 no interviene en esa elección. Las cifras de la tabla de v3 se agregan al generarlo ([plan simple](plan_simple.md), paso 1).
+La semana es el agrupamiento más grueso (frente a día o minuto) que todavía deja las tres calidades en cada partición y las proporciones 70/15/15 con un desvío de hasta 5 puntos; `src/data/split.py` verifica esas reglas y se detiene si no se cumplen. El F1 no intervino en esa elección. `python -m src.main fuga` mide cuánto se inflaba la nota con cada agrupamiento; las cifras del reparto final se agregan al generarlo.
 
 ## Artefactos y estado
 
-- data/processed/index.csv: inventario con 33.728 filas.
-- data/processed/crops/manifest.csv: manifiesto completo con estado y motivo por registro.
-- data/processed/pilot-crops/manifest.csv: piloto de 151 filas (105 candidatas, 37 por revisar y nueve excluidas).
-- data/processed/pilot-crops/splits.csv: piloto de 98 recortes en 70 grupos (77 train, 10 val y 11 test), sin grupos compartidos y con las tres clases.
-- data/processed/crops/splits.csv: split v1, conservado solo para comparar (tiene la fuga por ráfagas).
-- data/processed/crops/splits_v2_burst.csv: split vigente.
-- Código relacionado: [inventario](../src/data/inventory.py), [segmentación](../src/data/segmentation.py), [preparación](../src/data/prepare.py), [partición](../src/data/split.py) y [split v2](../src/data/split_v2.py).
+- `data/processed/index.csv`: inventario con 33.728 filas (`python -m src.main inventario`).
+- `data/processed/crops/manifest.csv`: decisión y motivo para cada foto (`python -m src.main recortar`).
+- `data/processed/crops/splits.csv`: el reparto final (`python -m src.main dividir`).
+- `data/processed/features.npz`: los 359 atributos de cada recorte (`python -m src.main atributos`).
+- `data/processed/pilot-crops/`: piloto de 151 fotos para revisar la segmentación (`python -m src.data.prepare --pilot`).
+- Código: [inventario](../src/data/inventory.py), [segmentación](../src/data/segmentation.py), [recortes](../src/data/prepare.py), [reparto](../src/data/split.py) y [atributos](../src/data/features.py).
 
-**Pendiente:** completar la revisión visual de candidatos fuera de la muestra estratificada y resolver las máscaras de cuatro mangos. El grupo de mango con dos candidatos quedó completo en train; no hay soporte de mango en validación ni prueba, así que no se reportarán métricas para ese producto. Usar el split v2 para todo entrenamiento y evaluación; v1 y el piloto quedan solo como diagnóstico.
+**Pendiente:** completar la revisión visual de candidatos fuera de la muestra estratificada y resolver las máscaras de cuatro mangos. El mango no está entre los 12 productos con datos suficientes: la app debe decir que no lo reconoce.
 
 ## Conclusión de la fase
 
-El pipeline de preparación generó el manifiesto y la partición por grupos. La primera versión tenía una fuga por ráfagas en Kaggle, corregida en el split v2, que no tiene ninguna ráfaga repartida. Queda por comprobar el agrupamiento por fecha y hora en AgriFreshNET. La auditoría visual fue estratificada, no individual para todos los candidatos, y cuatro fotos de mango siguen en revisión de segmentación. El modelado inicial puede comenzar con los candidatos aceptados, dejando documentado que los resultados son provisionales hasta completar esa revisión.
+El pipeline de preparación genera el manifiesto, el reparto por grupos y los atributos con un comando por paso. Las fugas por ráfagas de Kaggle y por semanas de AgriFreshNET quedan corregidas en el reparto final. La auditoría visual fue estratificada, no individual para todos los candidatos, y cuatro fotos de mango siguen en revisión de segmentación.

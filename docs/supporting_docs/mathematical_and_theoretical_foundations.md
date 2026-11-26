@@ -1,6 +1,6 @@
 # Fundamentos matemáticos y teóricos
 
-Este documento sostiene el indicador **PI3** (solución de problemas con matemáticas). Cada ecuación corresponde a código del repositorio; la columna *Implementación* de cada tabla indica dónde verificarla. Las cifras de §8 son de validación del reparto v2 y explican por qué se eligió esta configuración; se reemplazan por las de v3 al reentrenar con el [plan simple](../plan_simple.md). Test sigue reservado.
+Este documento sostiene el indicador **PI3** (solución de problemas con matemáticas). Cada ecuación corresponde a código del repositorio; la columna *Implementación* de cada tabla indica dónde verificarla. Las cifras de §8 son de val del segundo intento de reparto ([preparación](../03_data_preparation.md#cómo-llegamos-al-reparto-final)) y explican por qué se eligió esta configuración; se reemplazan por las del reparto final al reentrenar (`python -m src.main entrenar`). Test sigue reservado.
 
 | Evidencia exigida por la consigna | Sección |
 | --- | --- |
@@ -66,7 +66,7 @@ El objetivo de generalización no es la distribución de los datasets sino la de
 1. **Entrada no estructurada y de alta dimensión:** una foto de 1200×1600 px tiene $5{,}8\times10^6$ valores; la señal útil (una mancha) ocupa una fracción pequeña.
 2. **Etiquetas heterogéneas:** Kaggle solo trae `good/bad`; AgriFreshNET trae `Fresh/Semi-Fresh/Rotten`. El mapeo a $\mathcal{Y}$ es una decisión de modelado, no un dato.
 3. **Confusor fuente–clase:** en validation, $P(s=\text{agrifreshnet}\mid y=\text{regular})=1$. Un modelo puede minimizar la pérdida aprendiendo $s$ en lugar de $y$ (§8.3).
-4. **Dependencia entre observaciones:** ráfagas y aumentos rompen el supuesto i.i.d.; validation v2 tiene 3.795 recortes pero solo 852 grupos independientes. Definir mal el grupo produjo una fuga real (§7.1).
+4. **Dependencia entre observaciones:** ráfagas y aumentos rompen el supuesto i.i.d.; val del segundo reparto tiene 3.795 recortes pero solo 852 grupos independientes. Definir mal el grupo produjo una fuga real (§7.1).
 5. **Variable física no identificable:** el tamaño real no se puede recuperar de una foto sin escala (§4.2).
 6. **Desbalance:** en train, `regular` es el 18,7% de los recortes.
 
@@ -83,7 +83,7 @@ El objetivo de generalización no es la distribución de los datasets sino la de
 | Random Forest | Capta interacciones no lineales entre atributos (p. ej. tono × saturación) y reduce varianza promediando árboles. | Árbol único: varianza alta. XGBoost: posible mejora, más hiperparámetros. |
 | CNN de 4 bloques desde cero | Aprende filtros directamente de los píxeles; con 4 bloques el campo receptivo cubre una lesión completa (§6.4). | Transfer learning: mejor F1 esperado, pero la consigna lo recomienda menos. |
 | Ensamble RF + CNN con peso fijo | Errores poco correlacionados; el promedio reduce el riesgo (§6.6). | Elegir un solo modelo: empatan en F1, pero el ensamble comete menos errores caros. |
-| Split por ráfaga y CV agrupada | Estima el error sobre capturas nuevas (§7.1). | Split por imagen o por archivo: fuga entre fotos de una misma ráfaga, que se midió en v1. |
+| Split por ráfaga y CV agrupada | Estima el error sobre capturas nuevas (§7.1). | Split por imagen o por archivo: fuga entre fotos de una misma ráfaga, que se midió en el primer reparto. |
 | F1 macro como métrica de selección | Pesa igual las 3 clases (§7.2). | Accuracy: premia ignorar la clase minoritaria. |
 
 ---
@@ -190,7 +190,7 @@ Esto convierte $\hat t$ en una medida en milímetros con error dominado por la s
 
 ---
 
-## 5. Atributos para los modelos clásicos (`src/features/classic.py`)
+## 5. Atributos para los modelos clásicos (`src/data/features.py`)
 
 Sea $\Omega=\{u: m_u=1\}$ el conjunto de píxeles de la pieza en el recorte de 128×128.
 
@@ -256,7 +256,7 @@ $$
 \qquad \hat y=\arg\max_k\,(w_k^\top z+b_k).
 $$
 
-El margen geométrico es $2/\lVert w_k\rVert$: minimizar la norma lo ensancha, y $C$ regula cuánto se tolera violarlo. $C\in\{0{,}1;\,1;\,10\}$ se eligió por CV agrupada por ráfaga en el split v2: $C=10$, F1 = 0,676 ± 0,010. Que gane el $C$ más grande (menos regularización) es una señal de que el modelo está limitado por su frontera lineal y no por sobreajuste (§8.2).
+El margen geométrico es $2/\lVert w_k\rVert$: minimizar la norma lo ensancha, y $C$ regula cuánto se tolera violarlo. $C\in\{0{,}1;\,1;\,10\}$ se eligió por CV agrupada por ráfaga en el segundo reparto: $C=10$, F1 = 0,676 ± 0,010. Que gane el $C$ más grande (menos regularización) es una señal de que el modelo está limitado por su frontera lineal y no por sobreajuste (§8.2).
 
 ### 6.3 Random Forest
 
@@ -275,13 +275,13 @@ $$
 
 El bootstrap y el submuestreo de atributos bajan $\rho$; promediar $T$ árboles elimina el segundo término. Por eso árboles profundos (sesgo bajo, varianza alta) funcionan bien en conjunto.
 
-**Configuración elegida** (`src/training/train_classic.py`). `GridSearchCV` prueba `min_samples_leaf` ∈ {1, 5, 20} × `max_depth` ∈ {sin límite, 20} × $m$ ∈ {$\lfloor\sqrt{359}\rfloor=18$, $\lfloor0{,}1\cdot359\rfloor=35$}, con $T=200$, y se queda con la de mayor F1 macro promedio en la CV por grupos (§7.2). En v2, una búsqueda equivalente eligió `min_samples_leaf=5`, `max_depth=20` y $m=35$.
+**Configuración elegida** (`src/models/model_definitions.py`). `GridSearchCV` prueba `min_samples_leaf` ∈ {1, 5, 20} × `max_depth` ∈ {sin límite, 20} × $m$ ∈ {$\lfloor\sqrt{359}\rfloor=18$, $\lfloor0{,}1\cdot359\rfloor=35$}, con $T=200$, y se queda con la de mayor F1 macro promedio en la CV por grupos (§7.2). En el segundo reparto, una búsqueda equivalente eligió `min_samples_leaf=5`, `max_depth=20` y $m=35$.
 
 - Con $m=35$, la CV supera a $m=18$ en las 15 combinaciones de hoja y profundidad: cada corte ve más atributos útiles, a costa de árboles algo más correlacionados.
 - Usar 400 árboles no cambia la CV (0,8186 frente a 0,8185): con $T=160$ el término $(1-\rho)\sigma^2/T$ ya es despreciable.
 - Hojas de al menos 5 muestras y profundidad 20 reducen la mediana de hojas por árbol de 1.432 a 818.
 
-### 6.4 Red convolucional (candidata E3b)
+### 6.4 Red convolucional (4 bloques)
 
 Entrada $c\odot m$ normalizada a $[0,1]$. Cada bloque $\ell=1,\dots,4$, con $F_\ell\in\{32,64,128,256\}$ filtros, calcula
 
@@ -302,7 +302,7 @@ con convoluciones 3×3. Le siguen *Global Average Pooling* sobre el mapa de 8×8
 | Densa 256×3 + 3 | 771 |
 | **Total** | **389.667** |
 
-**Campo receptivo.** Con $r_\ell=r_{\ell-1}+(k-1)\,j_{\ell-1}$, y un salto $j$ que se duplica en cada pooling, cada neurona del último bloque ve un parche de **46×46 px** (36% del lado del recorte). Con 3 bloques eran 22×22 px (17%). Ese aumento explica la mejora de E1 a E3b (§8.2): con 3 bloques, la red solo veía texturas locales y GAP diluía las manchas grandes; con 4 bloques, una neurona abarca una lesión completa y su contexto.
+**Campo receptivo.** Con $r_\ell=r_{\ell-1}+(k-1)\,j_{\ell-1}$, y un salto $j$ que se duplica en cada pooling, cada neurona del último bloque ve un parche de **46×46 px** (36% del lado del recorte). Con 3 bloques eran 22×22 px (17%). Ese aumento explica la mejora de 3 a 4 bloques (§8.2): con 3 bloques, la red solo veía texturas locales y GAP diluía las manchas grandes; con 4 bloques, una neurona abarca una lesión completa y su contexto.
 
 **Optimización.** Adam con $\eta_0=10^{-3}$:
 
@@ -320,7 +320,7 @@ L(\theta)=-\frac1N\sum_{i=1}^{N}\omega_{y_i}\log p_\theta(y_i\mid x_i),\qquad
 \omega_k=\frac{N}{K\,N_k}.
 $$
 
-Con los conteos de train del split v2 ($N=16.272$):
+Con los conteos de train del segundo reparto ($N=16.272$):
 
 | Clase | $N_k$ | $\omega_k$ |
 | --- | ---: | ---: |
@@ -346,14 +346,14 @@ y la ganancia crece cuanto más difieren los dos modelos. RF y CNN fallan en con
 
 Dos precauciones:
 
-1. `predict_proba` de scikit-learn ordena las clases alfabéticamente (`bad`, `good`, `regular`). Hay que reordenarlas a $\mathcal{Y}$ antes de sumar, como hacen la app (`src/app/inference.py`) y el auditor de test (`src/evaluation/model_audit.py`).
+1. `predict_proba` de scikit-learn ordena las clases alfabéticamente (`bad`, `good`, `regular`). Hay que reordenarlas a $\mathcal{Y}$ antes de sumar, como hacen la app (`src/prediction/predictor.py`) y la evaluación (`src/evaluation/evaluate_models.py`).
 2. Las probabilidades de la CNN son más extremas que las de RF, así que $w$ nominal no es la influencia real de cada modelo. Calibrar ambas, por ejemplo con *temperature scaling*, queda como mejora.
 
 ---
 
 ## 7. Diseño experimental
 
-### 7.1 Partición por grupos (`src/data/split.py`, `src/data/split_v2.py`)
+### 7.1 Partición por grupos (`src/data/split.py`)
 
 Cada grupo $g$ se asigna completo a $\pi(g)\in\{\text{train},\text{val},\text{test}\}$, con proporciones objetivo $q=(0{,}70;\,0{,}15;\,0{,}15)$. Sea $n_{p,s}$ el número de archivos del estrato $s$ (total, calidad, fuente × calidad, producto) en la partición $p$ y $N_s$ su total. Entre 256 permutaciones aleatorias (semilla 42) se elige la que minimiza, en orden lexicográfico:
 
@@ -366,9 +366,9 @@ $$
 E=\sum_{s}w_s\left(\frac{n_{p,s}-q_pN_s}{\max(N_s,20)}\right)^2,\qquad w_s=\begin{cases}3&\text{total y calidad}\\1&\text{resto.}\end{cases}
 $$
 
-**La fuga del split v1 y su corrección.** La garantía "cada grupo en una sola partición" solo sirve si el grupo representa de verdad una unidad independiente. En v1, las fotos de Kaggle tenían un grupo por archivo, en lugar de uno por ráfaga de captura: 645 de 746 ráfagas quedaron repartidas, y el 99% de los recortes de Kaggle en validation compartía ráfaga con train. Medido con CV agrupada, el F1 de Kaggle pasaba de 0,932 (agrupando por ráfaga) a 0,968 (por archivo): unos 3,5 puntos inflados. El split v2 (`splits_v2_burst.csv`) reasigna los mismos recortes con los grupos por ráfaga:
+**La fuga del primer reparto y su corrección.** La garantía "cada grupo en una sola partición" solo sirve si el grupo representa de verdad una unidad independiente. En el primer reparto, las fotos de Kaggle tenían un grupo por archivo, en lugar de uno por ráfaga de captura: 645 de 746 ráfagas quedaron repartidas, y el 99% de los recortes de Kaggle en validation compartía ráfaga con train. Medido con CV agrupada, el F1 de Kaggle pasaba de 0,932 (agrupando por ráfaga) a 0,968 (por archivo): unos 3,5 puntos inflados. El segundo reparto reasigna los mismos recortes con los grupos por ráfaga:
 
-| | v1 | v2 |
+| | Reparto 1 | Reparto 2 |
 | --- | ---: | ---: |
 | Recortes | 23.687 | 23.543 |
 | Grupos | 13.192 | 5.677 |
@@ -376,7 +376,7 @@ $$
 | Validation: recortes / grupos | 3.557 / 1.979 | 3.795 / 852 |
 | Grupos de Kaggle en validation | 1.231 | 125 |
 
-En v2, el tamaño efectivo de validation es de 852 grupos, no de 3.795 filas, y las métricas de Kaggle se apoyan en solo 125 grupos. Por eso sus intervalos son unas tres veces más anchos (§8.1).
+En el segundo reparto, el tamaño efectivo de val es de 852 grupos, no de 3.795 filas, y las métricas de Kaggle se apoyan en solo 125 grupos. Por eso sus intervalos son unas tres veces más anchos (§8.1).
 
 ### 7.2 Selección de hiperparámetros
 
@@ -386,7 +386,7 @@ $$
 \lambda^\*=\arg\max_{\lambda\in\Lambda}\ \frac{1}{F}\sum_{f=1}^{F}\text{F1}_\text{macro}\big(h_{\lambda}^{(-f)},\ \text{fold}_f\big),
 $$
 
-implementado con `GridSearchCV(scoring="f1_macro", cv=StratifiedGroupKFold(3))`, que además reentrena el mejor modelo con todo *train*. Lo mismo se hace para el Random Forest de fruta, con el producto como etiqueta. Para la CNN no hay CV, porque cada entrenamiento tarda de 30 a 55 minutos en GPU: su arquitectura viene de los experimentos de §8.2 y su parada temprana usa un holdout de *train*. Así, validación y prueba no eligen nada y se miden una sola vez. En v2, la CNN se había elegido con validación, y por eso sus cifras de §8 son algo optimistas.
+implementado con `GridSearchCV(scoring="f1_macro", cv=StratifiedGroupKFold(3))`, que además reentrena el mejor modelo con todo *train*. Lo mismo se hace para el Random Forest de fruta, con el producto como etiqueta. Para la CNN no hay CV, porque cada entrenamiento tarda de 30 a 55 minutos en GPU: su arquitectura viene de los experimentos de §8.2 y su parada temprana usa un holdout de *train*. Así, validación y prueba no eligen nada y se miden una sola vez. En el segundo reparto, la CNN se había elegido con val, y por eso sus cifras de §8 son algo optimistas.
 
 ### 7.3 Métricas
 
@@ -411,9 +411,9 @@ Para dimensionar el conjunto externo de fotos propias, el semiancho del interval
 
 ---
 
-## 8. Resultados e interpretación matemática (validation v2)
+## 8. Resultados e interpretación matemática (val del segundo reparto)
 
-Todas las cifras son de validation v2 (3.795 recortes, 852 grupos). Test no se ha usado.
+Todas las cifras son de val del segundo reparto (3.795 recortes, 852 grupos). Test no se ha usado.
 
 ### 8.1 Comparación con incertidumbre
 
@@ -421,25 +421,25 @@ Todas las cifras son de validation v2 (3.795 recortes, 852 grupos). Test no se h
 | --- | --- | ---: | ---: | ---: |
 | Regresión logística | 0,714 | 0,789 | 165 (9,7%) | — |
 | SVM lineal ($C=10$) | 0,717 | 0,820 | 173 (10,2%) | — |
-| CNN E1 (3 bloques) | 0,797 | 0,870 | 135 (8,0%) | 97 |
+| CNN de 3 bloques | 0,797 | 0,870 | 135 (8,0%) | 97 |
 | Random Forest (rejilla) | 0,857 [0,834 – 0,878] | 0,897 | 121 (7,1%) | 122 |
-| CNN E3b (4 bloques) | 0,858 [0,831 – 0,881] | 0,916 | 90 (5,3%) | 128 |
+| CNN de 4 bloques | 0,858 [0,831 – 0,881] | 0,916 | 90 (5,3%) | 128 |
 | **Ensamble 0,5/0,5** | **0,875** | **0,926** | **79 (4,7%)** | **115** |
 
 Diferencias pareadas (bootstrap por grupos, IC 95%):
 
 | Comparación | $\Delta$ F1 global | Kaggle | AgriFreshNET |
 | --- | --- | --- | --- |
-| E3b − E1 (capacidad) | +0,060 [+0,036; +0,084] | +0,030 | +0,094 |
-| E2 − E1 (augmentation) | −0,051 [−0,073; −0,031] | −0,004 | −0,084 |
-| CNN E3b − RF | +0,001 [−0,027; +0,028] | −0,016 | +0,023 |
+| 4 bloques − 3 bloques (capacidad) | +0,060 [+0,036; +0,084] | +0,030 | +0,094 |
+| con giros − sin giros (augmentation) | −0,051 [−0,073; −0,031] | −0,004 | −0,084 |
+| CNN − RF | +0,001 [−0,027; +0,028] | −0,016 | +0,023 |
 | Ensamble − RF | +0,018 [−0,004; +0,042] | −0,005 | +0,044 [+0,012; +0,077] |
-| Ensamble − CNN E3b | +0,018 [+0,008; +0,028] | +0,011 | +0,020 |
+| Ensamble − CNN | +0,018 [+0,008; +0,028] | +0,011 | +0,020 |
 
 Lecturas:
 
 1. **Los no lineales superan a los lineales** por unos 0,14 de F1: la frontera lineal no alcanza.
-2. **RF y la CNN E3b empatan en F1.** El intervalo de $\Delta$ incluye el 0. La CNN, en cambio, comete un 26% menos de errores `bad→good`, el más caro.
+2. **RF y la CNN empatan en F1.** El intervalo de $\Delta$ incluye el 0. La CNN, en cambio, comete un 26% menos de errores `bad→good`, el más caro.
 3. **El ensamble mejora todos los indicadores de riesgo a la vez.** Frente a RF, la mejora global no es significativa, pero sí lo es en AgriFreshNET, la parte con tres clases. RF y CNN coinciden en el 84,3% de las fotos, con accuracy 0,951; en las 594 donde discrepan, el ensamble acierta el 58,4%, frente al 46,5% de RF y el 48,1% de la CNN. Esto concuerda con §6.6.
 4. **La decisión se justifica por costo, no por F1.** Si el error `bad→good` pesa más que los demás (§1.3), el ensamble minimiza el riesgo esperado entre los candidatos: 79 frente a 121 errores caros.
 
@@ -450,17 +450,17 @@ Lecturas:
 | Logística | F1 0,740 | F1 0,714 | Sesgo alto: brecha de 0,026, el modelo no tiene capacidad. |
 | SVM lineal | F1 0,737 | F1 0,717 | Sesgo alto; la CV elige el $C$ más grande. |
 | Random Forest | F1 0,993 | F1 0,857 (CV 0,816) | Varianza alta por árbol, controlada por el promedio (§6.3). La CV agrupada es el estimador honesto. |
-| CNN E1 (3 bloques) | acc 0,846, pérdida 0,380 | acc 0,817, pérdida 0,412 | Sin sobreajuste, con un techo en 0,41: límite de capacidad, no de optimización. |
-| CNN E2 (E1 + simetrías) | pérdida 0,554 | pérdida 0,529 | Más regularización sobre un modelo que no sobreajustaba: empeora el ajuste y el F1. |
-| CNN E3b (4 bloques) | acc 0,968, pérdida 0,095 | acc 0,878, pérdida 0,334 | Sobreajuste desde la época 30, contenido por EarlyStopping (mejor época 38 de 50). |
+| CNN de 3 bloques | acc 0,846, pérdida 0,380 | acc 0,817, pérdida 0,412 | Sin sobreajuste, con un techo en 0,41: límite de capacidad, no de optimización. |
+| CNN de 3 bloques + giros | pérdida 0,554 | pérdida 0,529 | Más regularización sobre un modelo que no sobreajustaba: empeora el ajuste y el F1. |
+| CNN de 4 bloques | acc 0,968, pérdida 0,095 | acc 0,878, pérdida 0,334 | Sobreajuste desde la época 30, contenido por EarlyStopping (mejor época 38 de 50). |
 
-La secuencia E1 → E2 → E3b funciona como un experimento del dilema sesgo–varianza:
+La secuencia 3 bloques → 3 bloques con giros → 4 bloques funciona como un experimento del dilema sesgo–varianza:
 
-- E1 tenía sesgo (train y validation juntos y con pérdida alta).
-- E2 aumentó la regularización y empeoró, lo que confirma que el problema no era la varianza.
-- E3b aumentó la capacidad (campo receptivo de 22 a 46 px) y redujo el sesgo, a cambio de varianza.
+- Con 3 bloques había sesgo (train y validation juntos y con pérdida alta).
+- Los giros aumentaron la regularización y empeoró, lo que confirma que el problema no era la varianza.
+- El cuarto bloque aumentó la capacidad (campo receptivo de 22 a 46 px) y redujo el sesgo, a cambio de varianza.
 
-Con E3b, la regularización vuelve a ser una mejora razonable, pero probar más variantes con validación aumentaría el sesgo de selección; se deja como trabajo futuro.
+Con 4 bloques, la regularización vuelve a ser una mejora razonable, pero probar más variantes con validación aumentaría el sesgo de selección; se deja como trabajo futuro.
 
 ### 8.3 Descomposición por fuente: el confusor
 
@@ -469,7 +469,7 @@ Con E3b, la regularización vuelve a ser una mejora razonable, pero probar más 
 | Regresión logística | 0,871 | 0,616 |
 | SVM lineal | 0,881 | 0,628 |
 | Random Forest | 0,954 | 0,799 |
-| CNN E3b | 0,938 | 0,823 |
+| CNN | 0,938 | 0,823 |
 | Ensamble | 0,949 | 0,843 |
 
 Kaggle no tiene `regular`, así que ahí el problema es binario. **La cifra representativa del problema de tres clases es la de AgriFreshNET (0,84 para el ensamble).**
@@ -480,7 +480,7 @@ Como $P(s=\text{agrifreshnet}\mid y=\text{regular})=1$, la información mutua $I
 - Entrenado solo con una fuente y evaluado en la otra, el AUC de `good` frente a `bad` cae de 0,98 a 0,72 (AgriFreshNET → Kaggle) y de 0,99 a 0,75 (Kaggle → AgriFreshNET).
 - El modelo entrenado solo con AgriFreshNET predice `regular` en 305 de 1.553 fotos de Kaggle; el modelo combinado, en 1.
 
-La conclusión defendible es que hay un confusor y un cambio de dominio fuerte. Que la sonda acierte la fuente no prueba que el clasificador use la fuente como atajo, pero la señal aprendida no transfiere bien entre dominios. En validation v2 hay 4 fotos propias, y RF y la CNN fallan 3. El tamaño de muestra no permite estimar nada, pero el resultado es coherente con lo anterior y motiva el conjunto externo de §7.4.
+La conclusión defendible es que hay un confusor y un cambio de dominio fuerte. Que la sonda acierte la fuente no prueba que el clasificador use la fuente como atajo, pero la señal aprendida no transfiere bien entre dominios. En val hay 4 fotos propias, y RF y la CNN fallan 3. El tamaño de muestra no permite estimar nada, pero el resultado es coherente con lo anterior y motiva el conjunto externo de §7.4.
 
 ### 8.4 Dónde fallan
 
@@ -498,8 +498,8 @@ La conclusión defendible es que hay un confusor y un cambio de dominio fuerte. 
 | SVM con kernel RBF | El costo de entrenamiento crece de forma superlineal con $n=16.272$; la SVM lineal ya muestra que el problema no es la regularización. |
 | XGBoost | Probable mejora sobre RF, pero agrega muchos hiperparámetros y más selección sobre los mismos datos. |
 | Transfer learning (MobileNet, ResNet) | La consigna recomienda priorizar modelos entrenados desde cero; sirve como cota superior en trabajo futuro. |
-| Augmentation geométrica (E2) | **Probada y descartada:** −0,051 de F1 [−0,073; −0,031] sobre un modelo sin sobreajuste. |
-| CNN de 3 bloques con 64-128-256 filtros (E3a) | Detenida por costo (197 s por época en una RTX 3050). E3b logra más capacidad con un bloque adicional y menos cómputo. |
+| Augmentation geométrica (giros) | **Probada y descartada:** −0,051 de F1 [−0,073; −0,031] sobre un modelo sin sobreajuste. |
+| CNN de 3 bloques con 64-128-256 filtros | Detenida por costo (197 s por época en una RTX 3050). La de 4 bloques logra más capacidad con un bloque adicional y menos cómputo. |
 | Ajustar el peso del ensamble con validation | El máximo de la curva ($w=0{,}2$, F1 0,885) sería una selección sobre validation. Para ajustarlo habría que usar predicciones fuera de fold en train. |
 | Regresión del tamaño en centímetros | Imposible sin escala (§4.2). |
 
@@ -507,7 +507,7 @@ La conclusión defendible es que hay un confusor y un cambio de dominio fuerte. 
 
 ## 10. Conclusiones técnicas
 
-1. **La unidad estadística es el grupo, no la foto.** La fuga del split v1 infló el F1 de Kaggle en unos 3,5 puntos aunque los grupos estuvieran bien separados: lo que fallaba era la definición del grupo. Validation v2 tiene 852 unidades independientes, y sus intervalos se calculan sobre ellas.
+1. **La unidad estadística es el grupo, no la foto.** La fuga del primer reparto infló el F1 de Kaggle en unos 3,5 puntos aunque los grupos estuvieran bien separados: lo que fallaba era la definición del grupo. Val del segundo reparto tiene 852 unidades independientes, y sus intervalos se calculan sobre ellas.
 2. **La formulación de costo asimétrico decide el modelo.** RF y la CNN empatan en F1. El ensamble no gana a RF de forma significativa en F1, pero reduce los errores `bad→good` de 121 a 79, y ese es el criterio que la formulación de §1.3 hace prioritario.
 3. **El diagnóstico sesgo–varianza guió los experimentos** y explica por qué la augmentation empeoró y la capacidad mejoró (§8.2).
 4. **Fuente y clase están confundidas** para `regular`, y la transferencia entre dominios es débil. Las conclusiones sobre `regular` se limitan a AgriFreshNET, y el desempeño en fotos de celular no está medido.
@@ -516,7 +516,7 @@ La conclusión defendible es que hay un confusor y un cambio de dominio fuerte. 
    - Comprobar si AgriFreshNET también tiene ráfagas por fecha y hora, con la misma prueba de CV de §7.1.
    - Conjunto externo de fotos propias con al menos 40 piezas por clase (§7.4).
    - Calibrar las probabilidades antes de combinarlas (§6.6).
-   - Regularizar E3b eligiendo con validación cruzada, no con validación.
+   - Regularizar la CNN eligiendo con validación cruzada, no con validación.
 
 ---
 

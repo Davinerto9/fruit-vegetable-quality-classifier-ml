@@ -2,7 +2,7 @@
 Genera los recortes candidatos y el manifiesto de preparación a partir del inventario.
 
 Fase CRISP-DM: Preparación de datos (y estadísticas de imagen para la Comprensión de datos)
-Uso: python -m src.data.prepare [--pilot]
+Uso: python -m src.main recortar        (o python -m src.data.prepare [--pilot] para un piloto)
 
 Por cada foto etiquetada del inventario:
 - segmenta con src.data.segmentation.process, o aplica el contorno manual de data/own/contours.json;

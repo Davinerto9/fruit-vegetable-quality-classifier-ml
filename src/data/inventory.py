@@ -3,7 +3,7 @@ Construye data/processed/index.csv a partir de las tres fuentes locales (ryandpa
 y fotos propias), con etiqueta, grupo para las particiones y estado de cada imagen.
 
 Fase CRISP-DM: Comprensión de datos (inventario) y Preparación de datos (etiquetas y grupos)
-Uso: python -m src.data.inventory
+Uso: python -m src.main inventario      (o python -m src.data.inventory)
 
 El grupo (`group`) es la unidad que no se separa al dividir en train/val/test:
 - ryandpark: fotos de la misma ráfaga (mismo minuto, o números consecutivos si no hay fecha);

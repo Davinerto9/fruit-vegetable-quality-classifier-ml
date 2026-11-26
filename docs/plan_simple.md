@@ -5,7 +5,7 @@
 ## Qué hace el sistema
 
 1. **Separa la fruta del fondo** con OpenCV (`src/data/segmentation.py`). Si hay varias frutas o el fondo se confunde con la fruta, pide otra foto en lugar de adivinar.
-2. **Describe la fruta** con 359 números de color, textura y forma (`src/features/classic.py`).
+2. **Describe la fruta** con 359 números de color, textura y forma (`src/data/features.py`).
 3. **Fruta:** un Random Forest con esos números elige entre los 12 productos que conoce. Si su probabilidad es menor al 50%, la app dice que no la reconoce.
 4. **Estado:** un Random Forest y una red convolucional (4 bloques) dan cada uno una probabilidad por estado; la app promedia las dos, mitad y mitad.
 
@@ -13,12 +13,12 @@
 | --- | --- | --- |
 | Fruta | Random Forest (200 árboles) | Simple, rápido y explicable; usa los mismos atributos. |
 | Estado (clásicos) | Regresión logística, SVM lineal, Random Forest | La consigna pide al menos dos modelos clásicos; la logística es la línea base. |
-| Estado (profundo) | CNN de 4 bloques Conv-BatchNorm-ReLU-MaxPool | La consigna pide un modelo de deep learning. |
+| Estado (profundo) | CNN de 4 bloques Conv-BatchNorm-ReLU-MaxPool, hecha desde cero | La consigna pide un modelo de deep learning. |
 | Estado final | Promedio RF + CNN | Una línea de código y menos errores de vender fruta mala como buena. |
 
 ## Sin trampa: tres reglas
 
-1. **Fotos parecidas, del mismo lado.** AgriFreshNET fotografió las mismas frutas durante semanas. Por eso todas las fotos de una misma fruta y semana quedan juntas en *train*, en *validación* o en *prueba* (`src/data/split_v3.py`). Lo mismo con las ráfagas de Kaggle.
+1. **Fotos parecidas, del mismo lado.** AgriFreshNET fotografió las mismas frutas durante semanas. Por eso todas las fotos de una misma fruta y semana quedan juntas en *train*, en *validación* o en *prueba* (`src/data/split.py`). Lo mismo con las ráfagas de Kaggle.
 2. **Hiperparámetros con validación cruzada.** Se eligen con `GridSearchCV` y `StratifiedGroupKFold(3)` de scikit-learn, solo con *train* y respetando los grupos de la regla 1. La CNN decide cuándo parar con un 10% de *train*, no con validación.
 3. **Validación y prueba, una vez.** Ninguna se usa para elegir nada. La prueba tiene un candado: si se intenta abrir otra vez, el programa se niega.
 
@@ -30,24 +30,23 @@
 - **Errores mala→buena:** cuántas frutas malas pasarían como buenas. Es el error más caro para un comprador.
 - **Intervalo de confianza:** el rango donde probablemente está la cifra real, calculado remuestreando grupos de fotos.
 
-## Pasos (en la máquina con los datos y la GPU)
+## Cómo se reproduce
 
-Desde la raíz del repo, con el ambiente activado (`pip install -r requirements.txt`). Con `S=data/processed/crops/splits_v3_week.csv` y `F=data/processed/classic_features_v3_week.npz`:
+Cada paso es un comando de `src/main.py` y lee lo que dejó el anterior:
 
-| # | Qué | Comando | Tiempo |
-| --- | --- | --- | --- |
-| 1 | Repartir las fotos sin trampa (parte del reparto v2; si no tienes `splits_v2_burst.csv`, corre antes `python -m src.data.split` y `python -m src.data.split_v2`) | `python -m src.data.split_v3 --choose` | 1 min |
-| 2 | *(Opcional)* medir cuánto inflaba la trampa | `PYTHONPATH=. python experiments/diagnostics/agri_leak_ladder.py` | 20 min |
-| 3 | Atributos para el nuevo reparto | `python -m src.features.subset_classic_cache --split $S --output $F` | 1 min |
-| 4 | Modelos clásicos (estado y fruta) | `python -m src.training.train_classic --split $S --features $F --tag v3_week` | 15–25 min |
-| 5 | CNN | `python -m src.training.train_cnn --split $S --run-name v3_week --epochs 100 --patience 12 --reduce-lr-patience 4 --filters 32,64,128,256 --cache --es-holdout 0.1` | ~45 min GPU |
-| 6 | Validación, una vez | `python -m src.evaluation.model_audit` | 5 min |
-| 7 | Fotos de celular | descargar la carpeta de Drive en `data/external/raw/<Fruta>/`, luego `python -m src.data.external_pool ingest` y `python -m src.data.external_pool sheets` | 10 min |
-| 8 | Etiquetar el estado a ciegas | una persona llena `data/external/labeling/annotator_A.csv` mirando `sheet_A.html`, sin abrir la app. *(Opcional: otra persona llena B y se corre `external_eval agreement`.)* Luego `python -m src.evaluation.external_eval finalize` | 1 h |
-| 9 | Evaluar fotos de celular, una vez | `python -m src.evaluation.external_eval evaluate --confirm-external` | 2 min |
-| 10 | Congelar y abrir prueba, una vez | `sha256sum <split> <checkpoints> > experiments/results/pretest_freeze.sha256` (Git Bash), luego `python -m src.evaluation.model_audit --partition test --confirm-final-test` | 5 min |
+```
+fotos (data/raw/)
+  │  1. inventario   ¿qué fruta, qué estado, qué grupo?         -> index.csv
+  │  2. recortar     fruta sin fondo, 128x128 (o se rechaza)     -> crops/
+  │  3. dividir      70/15/15 por grupos                         -> splits.csv
+  │  4. atributos    359 números por recorte                     -> features.npz
+  │  5. entrenar     GridSearchCV por grupos + CNN               -> models/
+  │  6. evaluar      métricas en val                             -> results/
+  ▼
+app/app.py usa models/ para una foto nueva
+```
 
-Si el paso 1 elige otro nivel que `week`, cambia el sufijo en los comandos y en `src/config.py` (`APP_*_CHECKPOINT`).
+`python -m src.main todo` corre los seis seguidos. Al final, una sola vez: `congelar`, `evaluar --test --confirmo` y la prueba con fotos de celular (`celular ...`). Los comandos exactos están en el [README](../README.md#cómo-usar).
 
 ## Límites que hay que decir en la sustentación
 

@@ -12,12 +12,11 @@ data/raw/*
 data/processed/index.csv
 data/processed/crops/
 data/processed/pilot-crops/
-data/processed/classic_features*.npz
+data/processed/features.npz
 data/processed/.prepare-*/
 
-# Modelos entrenados (pesados)
-experiments/checkpoints/*
-!experiments/checkpoints/.gitkeep
+# models/ y results/ SÍ se suben: la app necesita los modelos y el informe cita los
+# resultados (incluidos los candados de test, que prueban que se evaluó una sola vez).
 
 # Sistema operativo y editores
 .DS_Store
