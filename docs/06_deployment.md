@@ -70,4 +70,4 @@ Si se recopilan nuevas imágenes, se revisa su distribución por calidad, produc
 
 ## Estado
 
-Interfaz implementada y probada con imágenes sintéticas, fotos propias (segmentación y rechazo) y modelos de prueba; 70 pruebas automáticas pasan. Falta abrirla en el navegador con los modelos entrenados con todos los datos y completar las pruebas de uso de la lista anterior. El cierre de la entrega incluirá el informe IEEE de máximo siete páginas, un video de hasta diez minutos y las referencias realmente utilizadas.
+Interfaz implementada con los modelos entrenados con todos los datos (`models/`); 91 pruebas automáticas pasan. Entregados: el [informe IEEE](../report/informe.pdf) (6 páginas, fuente en `report/`) y el [video del proyecto](https://youtu.be/gwlolsmqH44).

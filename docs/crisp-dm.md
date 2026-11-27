@@ -28,13 +28,13 @@ La adaptación sigue la guía IBM SPSS Modeler CRISP-DM Guide, versión 18.3, y 
 
 Con una foto de una fruta o verdura individual sobre un fondo sencillo, el prototipo identifica qué producto es (entre 12) y clasifica su apariencia externa como good, regular o bad. También calcula un diámetro normalizado que expresa la ocupación de la foto, no centímetros. Apoya la inspección humana; no determina inocuidad, estado interno ni precio.
 
-Se combinan Fruit Quality Classification de Kaggle, AgriFreshNET y fotos propias. Los modelos son regresión logística, SVM lineal y Random Forest sobre atributos de color, textura y forma, y una CNN de 4 bloques; el estado final es el promedio de Random Forest y CNN. La interfaz es Streamlit.
+Se combinan Fruit Quality Classification de Kaggle, AgriFreshNET, AFruitDB, fotos propias y fotos de celular del curso. Los modelos son regresión logística, SVM lineal y Random Forest sobre atributos de color, textura y forma, y una CNN de 4 bloques; el modelo final del estado es el Random Forest. La interfaz es Streamlit.
 
 | Fase | Estado |
 | --- | --- |
 | Comprensión del negocio | Alcance, criterios, riesgos, ética e impactos definidos. |
 | Comprensión de los datos | Inventario y EDA disponibles; la clase regular viene casi toda de AgriFreshNET. |
 | Preparación | Segmentación y reparto final sin fotos gemelas entre particiones. |
-| Modelado | Hiperparámetros con `GridSearchCV` por grupos; CNN con parada temprana dentro de train. Falta reentrenar con el reparto final. |
-| Evaluación | Validación, fotos de celular y prueba, una vez cada una. Pendiente. |
+| Modelado | Hiperparámetros con `GridSearchCV` por grupos; CNN con parada temprana dentro de train. Entrenados con el reparto final; modelo final: Random Forest. |
+| Evaluación | Validación, fotos de celular y prueba, una vez cada una. Hecha: test F1 0,596 [0,522–0,677]; celular F1 0,295. |
 | Despliegue | App Streamlit que muestra fruta, estado y tamaño relativo, y rechaza fotos que no puede leer. |

@@ -52,7 +52,7 @@ Antes, las fotos de celular del curso se parten por sesión: la mitad se etiquet
 
 - **"Cualquier foto" tiene condiciones:** una sola fruta, fondo liso y distinto a la fruta, y que la fruta esté completa. La app rechaza las fotos que no cumplen, en lugar de inventar.
 - **Solo conoce 13 productos.** Una fruta distinta (kiwi, fresa…) debe recibir "no la reconozco".
-- **El mango solo se midió dentro de AFruitDB** (mangos de Bangladesh). Con mangos colombianos la fruta o el estado pueden fallar; para medirlo hacen falta fotos propias nuevas de mango en la mitad de prueba.
+- **Las frutas locales sin fotos de celular en el entrenamiento fallan.** En la prueba con celular, guayaba, limón y mango casi nunca se reconocen (0–1 %), mientras que banano y manzana, que sí tenían fotos de celular en train, sí (89–100 %).
 - **El tamaño es relativo al encuadre,** no centímetros.
 - **El estado es la apariencia externa,** no la inocuidad ni el interior de la fruta.
 

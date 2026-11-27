@@ -13,7 +13,7 @@ A partir de una foto de **una** fruta o verdura sobre fondo uniforme, el sistema
 - **Su estado:** buena (`good`), regular (`regular`) o mala (`bad`), según los [criterios de anotación](docs/criterios-calidad.md).
 - **Su tamaño relativo:** pequeño, mediano o grande según cuánto ocupa la foto (no centímetros).
 
-Seguimos la metodología **CRISP-DM**. La fruta la identifica un Random Forest; el estado, el promedio de un Random Forest y una red convolucional de 4 bloques, con la regresión logística y la SVM lineal como comparación. Los hiperparámetros se eligen con `GridSearchCV` y validación cruzada por grupos, de modo que fotos casi iguales nunca quedan a la vez en entrenamiento y evaluación ([por qué importa](docs/03_data_preparation.md#cómo-llegamos-al-reparto-final)). La app de **Streamlit** recibe una foto o la cámara; consulta [Despliegue](docs/06_deployment.md).
+Seguimos la metodología **CRISP-DM**. La fruta la identifica un Random Forest. Para el estado se comparan regresión logística, SVM lineal, Random Forest, una red convolucional de 4 bloques y el promedio de RF y CNN; el modelo final es el **Random Forest**, elegido en validación porque empata en F1 y deja pasar la mitad de frutas malas como buenas. Los hiperparámetros se eligen con `GridSearchCV` y validación cruzada por grupos, de modo que fotos casi iguales nunca quedan a la vez en entrenamiento y evaluación ([por qué importa](docs/03_data_preparation.md#cómo-llegamos-al-reparto-final)). La app de **Streamlit** recibe una foto o la cámara; consulta [Despliegue](docs/06_deployment.md).
 
 ## Integrantes
 

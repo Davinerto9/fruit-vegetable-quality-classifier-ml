@@ -65,8 +65,8 @@ La semana es el agrupamiento más grueso (frente a día o minuto) que todavía d
 - `data/processed/pilot-crops/`: piloto de 151 fotos para revisar la segmentación (`python -m src.data.prepare --pilot`).
 - Código: [inventario](../src/data/inventory.py), [segmentación](../src/data/segmentation.py), [recortes](../src/data/prepare.py), [reparto](../src/data/split.py) y [atributos](../src/data/features.py).
 
-**Pendiente:** completar la revisión visual de candidatos fuera de la muestra estratificada y resolver las máscaras de cuatro mangos de `data/own/` (si la segmentación las rechaza, quedan fuera). El mango entra como producto 13 gracias a AFruitDB (618 fotos, 11 sesiones).
+**Limitación:** la revisión visual fue por muestra estratificada, no foto por foto. De las 41 fotos propias con estado, 37 pasan la segmentación y entran al reparto; las demás quedan fuera. El mango entra como producto 13 gracias a AFruitDB (618 fotos, 11 sesiones).
 
 ## Conclusión de la fase
 
-El pipeline de preparación genera el manifiesto, el reparto por grupos y los atributos con un comando por paso. Las fugas por ráfagas de Kaggle y por semanas de AgriFreshNET quedan corregidas en el reparto final. La auditoría visual fue estratificada, no individual para todos los candidatos, y cuatro fotos de mango siguen en revisión de segmentación.
+El pipeline de preparación genera el manifiesto, el reparto por grupos y los atributos con un comando por paso. Las fugas por ráfagas de Kaggle y por semanas de AgriFreshNET quedan corregidas en el reparto final. La auditoría visual fue estratificada, no individual para todos los candidatos.

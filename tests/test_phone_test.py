@@ -30,6 +30,12 @@ def _photo(path, color=(255, 140, 0), size=(400, 300), center=(200, 150), radius
     pil.save(path, exif=exif)
 
 
+@pytest.fixture(autouse=True)
+def lock_aside(tmp_path, monkeypatch):
+    """El candado real del repositorio (results/) no debe afectar a las pruebas."""
+    monkeypatch.setattr(phone_test, "LOCK", tmp_path / "celular_evaluation.lock")
+
+
 @pytest.fixture()
 def crops(tmp_path, monkeypatch):
     """Carpeta de recortes del entrenamiento, temporal (finalizar copia ahí la mitad entrenar)."""

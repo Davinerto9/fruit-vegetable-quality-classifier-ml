@@ -1,10 +1,10 @@
 """Genera las figuras 2, 3 y 4 del informe a partir de los resultados del proyecto.
 
 Uso, desde la raíz del repositorio:
-    python informe/generar_figuras.py
+    python report/generar_figuras.py
 
 Lee results/evaluacion_val.json, results/evaluacion_test.json y
-results/entrenamiento_cnn.json, y escribe los PDF en informe/figuras/.
+results/entrenamiento_cnn.json, y escribe los PDF en report/figuras/.
 """
 import json
 import sys
