@@ -2,26 +2,27 @@
 
 ## Fuentes y alcance observado
 
-El índice local contiene **33.728 archivos en 17.481 grupos**. Estos conteos describen el inventario, no el conjunto final de entrenamiento.
+El índice local contiene **36.265 archivos en 6.068 grupos** (conteos del [notebook 01](../notebooks/01_eda.ipynb)). Estos conteos describen el inventario, no el conjunto final de entrenamiento.
 
 | Fuente | Archivos | Etiquetas disponibles y restricciones |
 | --- | ---: | --- |
 | Fruit Quality Classification (ryandpark) | 19.526 | Good y Bad se mapean inicialmente a good y bad. Hay 1.074 imágenes Mixed que requieren etiqueta por pieza. |
 | AgriFreshNET | 14.160 | Fresh, Semi-Fresh y Rotten se mapean a good, regular y bad. Las copias aumentadas deben permanecer junto con su original. |
+| AFruitDB | 2.537 | Grados 1st, 2nd y 3rd se mapean a good, regular y bad (ver abajo). |
 | Fotos del equipo | 42 | 41 tienen calidad asignada; cuatro siguen en revisión de segmentación y una foto requiere etiquetas por pieza. |
-| **Total** | **33.728** | 32.585 filas labeled, 68 en conflicto y 1.075 requieren etiqueta por pieza; ya no hay calidad pendiente. |
+| **Total** | **36.265** | 34.943 filas labeled, 247 en grupos conflictivos y 1.075 requieren etiqueta por pieza; ya no hay calidad pendiente. |
 
 ## Composición por calidad
 
-Los conteos reflejan las etiquetas registradas en el índice e incluyen 68 registros de grupos conflictivos. Esos grupos no deben entrar en el aprendizaje mientras no se resuelvan.
+Los conteos son de las 34.943 filas labeled (sin los grupos conflictivos, que no entran en el aprendizaje).
 
 | Etiqueta | Archivos |
 | --- | ---: |
-| good | 16.408 |
-| regular | 4.735 |
-| bad | 11.510 |
+| good | 17.294 |
+| regular | 5.745 |
+| bad | 11.904 |
 
-De las 4.735 filas regular, 4.720 proceden de AgriFreshNET. Esta asociación entre clase y fuente puede confundir el análisis: el modelo podría reconocer el estilo de captura de la fuente. Se deben revisar fondos, iluminación, producto y origen, e informar métricas por fuente cuando la muestra lo permita.
+De las 5.745 filas regular, 4.695 (82 %) proceden de AgriFreshNET. Esta asociación entre clase y fuente puede confundir el análisis: el modelo podría reconocer el estilo de captura de la fuente. Se deben revisar fondos, iluminación, producto y origen, e informar métricas por fuente cuando la muestra lo permita.
 
 ### Cuarta fuente: AFruitDB, para que `regular` no dependa de una sola fuente
 
@@ -59,7 +60,7 @@ Las gráficas deben mostrar conteos y soporte, para que las diferencias se inter
 
 ## Calidad, conflictos y hallazgos
 
-La auditoría registró **17 grupos de AgriFreshNET en conflicto**, con 68 archivos y 51 contenidos distintos. En cada grupo, una imagen idéntica aparece con dos etiquetas incompatibles. Se excluyen los grupos completos hasta adjudicar sus etiquetas.
+La auditoría registró 68 archivos de AgriFreshNET en los que una imagen idéntica aparece con dos etiquetas incompatibles. Al agrupar AgriFreshNET por producto y semana, esos conflictos quedan en **18 grupos con 247 archivos**. Se excluyen los grupos completos hasta adjudicar sus etiquetas.
 
 Las seis fotos de mango **no son del equipo**: son las mismas seis de la carpeta compartida de la clase (*Photos of Fruits and Vegetables | APO III*, Google Drive) y deben citarse como aporte del pool de la clase. Tienen etiquetas confirmadas para la pieza del primer plano. Dos recortes pasan segmentación automática; cuatro siguen en revisión porque se detectan dos frutas en la escena. Las seis fotos permanecen en un mismo grupo. Las escenas con varias piezas no deben tratarse como una observación única. Las copias de una misma captura o sus aumentos se agrupan para evitar que aparezcan en distintos splits.
 

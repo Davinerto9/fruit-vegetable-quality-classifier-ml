@@ -33,7 +33,7 @@ Después de medir la línea base y antes de comparar candidatos, el equipo debe 
 
 El alcance académico cubre los datos, la clasificación visual, la estimación geométrica relativa y una demostración local. Las personas interesadas son el equipo, el profesorado y, en una prueba posterior, quienes realizan inspección manual. El sistema no automatiza decisiones de consumo, descarte, compra o comercialización.
 
-- **Recursos:** Python, bibliotecas de visión por computadora y ML, tres fuentes descargadas localmente, 42 fotos propias y tiempo del equipo para revisar anotaciones.
+- **Recursos:** Python, bibliotecas de visión por computadora y ML, tres datasets públicos descargados localmente, 42 fotos propias, las fotos de celular del curso y tiempo del equipo para revisar anotaciones.
 - **Requisitos:** foto individual, trazabilidad de fuente, etiquetas consistentes, grupos sin fuga entre particiones, ajuste con validación y comunicación de límites.
 - **Supuestos:** el mapeo de categorías de cada fuente es una aproximación; el modelo debe aprender señales de deterioro y no solo fondo, cámara o fuente.
 - **Restricciones:** fuentes con criterios y capturas distintas; pocas etiquetas propias de tamaño; no hay escala física; datos descargados y procesados no se incluyen en Git.
