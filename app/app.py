@@ -182,9 +182,9 @@ def main() -> None:
         "Las fotos no se guardan."
     )
     st.caption(
-        "Los modelos se entrenaron con fotos de dos datasets públicos. Con fotos de celular, "
-        "en otras condiciones de luz y fondo, el desempeño todavía no está medido y puede ser "
-        "menor que el reportado."
+        "Los modelos se entrenaron con dos datasets públicos, fotos del equipo y la mitad de "
+        "las fotos de celular del curso. Con otra luz, fondo o cámara el desempeño puede ser "
+        "menor que el reportado; la otra mitad de las fotos de celular lo mide."
     )
 
     include_cnn = render_sidebar()
