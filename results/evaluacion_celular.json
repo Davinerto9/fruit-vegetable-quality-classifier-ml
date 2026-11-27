@@ -1,0 +1,93 @@
+{
+  "n": 302,
+  "sessions": 6,
+  "class_counts": {
+    "good": 250,
+    "regular": 48,
+    "bad": 4
+  },
+  "products": {
+    "apple": 35,
+    "banana": 18,
+    "guava": 91,
+    "lime": 70,
+    "orange": 49,
+    "mango": 39
+  },
+  "fruit": {
+    "accuracy": 0.31788079470198677,
+    "accuracy_ci95": [
+      0.052770448548812667,
+      0.7644628099173554
+    ],
+    "f1_macro": 0.24688697248146563
+  },
+  "quality": {
+    "random_forest": {
+      "f1_macro": 0.29454498780644334,
+      "f1_macro_ci95": [
+        0.22701742701742703,
+        0.33362833679790893
+      ],
+      "recall_bad": 0.0,
+      "bad_to_good": 2
+    },
+    "cnn": {
+      "f1_macro": 0.30750259605399793,
+      "f1_macro_ci95": [
+        0.2290246022195481,
+        0.37024472021347304
+      ],
+      "recall_bad": 0.0,
+      "bad_to_good": 2
+    },
+    "ensemble": {
+      "f1_macro": 0.3101369282797599,
+      "f1_macro_ci95": [
+        0.24520655151210244,
+        0.3588516746411483
+      ],
+      "recall_bad": 0.0,
+      "bad_to_good": 2
+    }
+  },
+  "final_model": "random_forest",
+  "by_product": {
+    "apple": {
+      "n": 35,
+      "phone_photos_in_training": true,
+      "fruit_accuracy": 0.8857142857142857,
+      "quality_f1_final": 0.22641509433962262
+    },
+    "banana": {
+      "n": 18,
+      "phone_photos_in_training": true,
+      "fruit_accuracy": 1.0,
+      "quality_f1_final": 0.03508771929824561
+    },
+    "guava": {
+      "n": 91,
+      "phone_photos_in_training": false,
+      "fruit_accuracy": 0.01098901098901099,
+      "quality_f1_final": 0.3137038400196295
+    },
+    "lime": {
+      "n": 70,
+      "phone_photos_in_training": false,
+      "fruit_accuracy": 0.0,
+      "quality_f1_final": 0.3333333333333333
+    },
+    "mango": {
+      "n": 39,
+      "phone_photos_in_training": false,
+      "fruit_accuracy": 0.0,
+      "quality_f1_final": 0.2222222222222222
+    },
+    "orange": {
+      "n": 49,
+      "phone_photos_in_training": false,
+      "fruit_accuracy": 0.9387755102040817,
+      "quality_f1_final": 0.2868217054263566
+    }
+  }
+}
