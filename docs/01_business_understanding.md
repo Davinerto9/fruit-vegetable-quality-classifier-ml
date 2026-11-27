@@ -8,7 +8,7 @@ En plazas de mercado y comercios, la clasificación de frutas y verduras por apa
 
 Construir y evaluar un prototipo reproducible que, a partir de la foto de una pieza individual sobre fondo sencillo:
 
-- identifique qué fruta o verdura es, entre los 12 productos con datos de entrenamiento, y diga cuándo no la reconoce;
+- identifique qué fruta o verdura es, entre los 13 productos con datos de entrenamiento, y diga cuándo no la reconoce;
 - clasifique su apariencia externa como good, regular o bad;
 - calcule el diámetro equivalente normalizado de la pieza en la imagen;
 - acepte una imagen cargada o capturada con cámara desde una interfaz sencilla.

@@ -21,7 +21,7 @@ El manifiesto completo local actualizado tiene 33.728 filas: **23.706 candidate,
 
 ## Segmentación y construcción de ejemplos
 
-El código estima el fondo en espacio Lab, crea una máscara inicial, la refina con GrabCut y aplica controles de área y componentes. Produce un recorte para CNN y una versión con máscara para atributos clásicos. Hay contornos manuales para corregir tres incidencias propias del piloto.
+El código estima el fondo en espacio Lab, crea una máscara inicial, la refina con GrabCut y aplica controles de área y componentes. Si la máscara queda con forma de media luna (podredumbre muy oscura sobre un fondo también oscuro, que se confunde con el fondo), se repite con un umbral de oscuridad más permisivo y se acepta solo si la forma se llena claramente (la solidez sube al menos 0,15) sin contar más frutas. En 156 fotos revisadas (AFruitDB, propias, Drive y mangos nuevos) esto cambió solo los dos mangos podridos que lo necesitaban; si un lado entero de la fruta es negro sobre un fondo oscuro, sigue sin poder separarse por color. Produce un recorte para CNN y una versión con máscara para atributos clásicos. Hay contornos manuales para corregir tres incidencias propias del piloto.
 
 Los recortes se llevan a **128 × 128 píxeles**. La máscara debe conservar alineación con el recorte. Se revisan casos con varias piezas, máscara parcial, sombras, fondo mezclado y producto cortado por el borde.
 
@@ -65,7 +65,7 @@ La semana es el agrupamiento más grueso (frente a día o minuto) que todavía d
 - `data/processed/pilot-crops/`: piloto de 151 fotos para revisar la segmentación (`python -m src.data.prepare --pilot`).
 - Código: [inventario](../src/data/inventory.py), [segmentación](../src/data/segmentation.py), [recortes](../src/data/prepare.py), [reparto](../src/data/split.py) y [atributos](../src/data/features.py).
 
-**Pendiente:** completar la revisión visual de candidatos fuera de la muestra estratificada y resolver las máscaras de cuatro mangos. El mango no está entre los 12 productos con datos suficientes: la app debe decir que no lo reconoce.
+**Pendiente:** completar la revisión visual de candidatos fuera de la muestra estratificada y resolver las máscaras de cuatro mangos de `data/own/` (si la segmentación las rechaza, quedan fuera). El mango entra como producto 13 gracias a AFruitDB (618 fotos, 11 sesiones).
 
 ## Conclusión de la fase
 

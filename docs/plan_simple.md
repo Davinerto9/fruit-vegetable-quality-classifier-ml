@@ -6,7 +6,7 @@
 
 1. **Separa la fruta del fondo** con OpenCV (`src/data/segmentation.py`). Si hay varias frutas o el fondo se confunde con la fruta, pide otra foto en lugar de adivinar.
 2. **Describe la fruta** con 359 números de color, textura y forma (`src/data/features.py`).
-3. **Fruta:** un Random Forest con esos números elige entre los 12 productos que conoce. Si su probabilidad es menor al 50%, la app dice que no la reconoce.
+3. **Fruta:** un Random Forest con esos números elige entre los 13 productos que conoce. Si su probabilidad es menor al 50%, la app dice que no la reconoce.
 4. **Estado:** un Random Forest y una red convolucional (4 bloques) dan cada uno una probabilidad por estado; la app promedia las dos, mitad y mitad.
 
 | Pieza | Modelo | Por qué |
@@ -46,12 +46,13 @@ fotos (data/raw/)
 app/app.py usa models/ para una foto nueva
 ```
 
-`python -m src.main todo` corre los seis seguidos. Al final, una sola vez: `congelar`, `evaluar --test --confirmo` y la prueba con fotos de celular (`celular ...`). Los comandos exactos están en el [README](../README.md#cómo-usar).
+Antes, las fotos de celular del curso se parten por sesión: la mitad se etiqueta y entra a train (`celular ingerir`, `hojas`, `finalizar`), la otra mitad se guarda para el final. `python -m src.main todo` corre los seis pasos seguidos. Al final, una sola vez: `congelar`, `evaluar --test --confirmo` y `celular evaluar --confirmo`. Los comandos exactos están en el [README](../README.md#cómo-usar).
 
 ## Límites que hay que decir en la sustentación
 
 - **"Cualquier foto" tiene condiciones:** una sola fruta, fondo liso y distinto a la fruta, y que la fruta esté completa. La app rechaza las fotos que no cumplen, en lugar de inventar.
-- **Solo conoce 12 productos.** El mango, por ejemplo, no está: la app debe decir que no lo reconoce.
+- **Solo conoce 13 productos.** Una fruta distinta (kiwi, fresa…) debe recibir "no la reconozco".
+- **El mango solo se midió dentro de AFruitDB** (mangos de Bangladesh). Con mangos colombianos la fruta o el estado pueden fallar; para medirlo hacen falta fotos propias nuevas de mango en la mitad de prueba.
 - **El tamaño es relativo al encuadre,** no centímetros.
 - **El estado es la apariencia externa,** no la inocuidad ni el interior de la fruta.
 

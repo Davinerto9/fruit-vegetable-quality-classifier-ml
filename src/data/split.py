@@ -21,6 +21,8 @@ Qué es un grupo
        "Rotten X(24-35)" = días desde la compra), así que fotos de días seguidos pueden ser
        la misma fruta. La semana se lee de la fecha del nombre (IMG_20251102_...).
     3. Fotos propias: cada fruta física.
+    4. Fotos de celular de la mitad "entrenar" (src/evaluation/phone_test.py): cada sesión.
+       Van todas a train; la otra mitad es la prueba final y nunca entra aquí.
     Además, si un archivo se apartó en la revisión visual (data/annotations/
     segmentation_exclusions.csv), se aparta su grupo completo.
 
@@ -347,6 +349,16 @@ def make_split(rows: list[dict[str, str]], level: str = AGRI_LEVEL,
     return [dict(row, split=assignment[row["group"]]) for row in grouped], verdict
 
 
+def load_phone_rows(path: Path, columns: list[str]) -> list[dict[str, str]]:
+    """Fotos de celular de la mitad "entrenar" (si ya se etiquetaron), todas para train."""
+    if not path.is_file():
+        return []
+    with path.open(encoding="utf-8-sig", newline="") as file:
+        phone = [row for row in csv.DictReader(file) if row.get("filename")]
+    return [dict({column: row.get(column, "") for column in columns},
+                 group_original=row["group"], split="train") for row in phone]
+
+
 def print_summary(rows: list[dict[str, str]]) -> None:
     for partition in PARTITIONS:
         subset = [row for row in rows if row["split"] == partition]
@@ -363,6 +375,9 @@ def run(manifest: Path = config.CROPS_DIR / "manifest.csv",
     rows, verdict = make_split(rows)
     if not verdict["ok"]:
         raise RuntimeError("El reparto no cumple las reglas: " + "; ".join(verdict["problems"]))
+    phone_dir = manifest.parent.parent / config.PHONE_TRAIN_DIR.name
+    phone = load_phone_rows(phone_dir / config.PHONE_TRAIN_CSV.name, columns)
+    rows += phone
     output.parent.mkdir(parents=True, exist_ok=True)
     file = NamedTemporaryFile(dir=output.parent, delete=False, mode="w", encoding="utf-8",
                               newline="")
@@ -379,6 +394,7 @@ def run(manifest: Path = config.CROPS_DIR / "manifest.csv",
         temporary.unlink(missing_ok=True)
     print(f"Reparto guardado en {output}")
     print(f"Recortes apartados por la revisión visual: {excluded}")
+    print(f"Fotos de celular agregadas a train: {len(phone)}")
     print(f"Desvío máximo de proporciones por calidad: {verdict['deviation']:.3f}")
     print_summary(rows)
     return output

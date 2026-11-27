@@ -6,10 +6,14 @@ A partir del recorte de **una** pieza (ver [preparación](03_data_preparation.md
 
 | Pregunta | Modelo | Entrada |
 | --- | --- | --- |
-| ¿Qué fruta o verdura es? | Random Forest de fruta (12 productos) | 359 atributos: color RGB/HSV, textura LBP y forma |
+| ¿Qué fruta o verdura es? | Random Forest de fruta (13 productos) | 359 atributos: color RGB/HSV, textura LBP y forma |
 | ¿En qué estado está? | Regresión logística (línea base), SVM lineal, Random Forest y CNN | Los mismos 359 atributos; la CNN recibe el recorte RGB de 128 × 128 con el fondo anulado |
 
 El estado que muestra la app es el **promedio 50/50 de las probabilidades del Random Forest y la CNN**. El peso se fijó de antemano y no se ajusta con validación. Las ecuaciones de cada modelo están en los [fundamentos matemáticos](supporting_docs/mathematical_and_theoretical_foundations.md#6-modelos).
+
+## Con qué fotos se entrena
+
+*Train* del reparto por grupos (Kaggle, AgriFreshNET y `data/own/`) más la mitad "entrenar" de las fotos de celular del curso, ya etiquetadas. Cada sesión de celular es un grupo, así que la validación cruzada tampoco mezcla fotos de una misma sesión. La otra mitad del celular no se usa aquí: es la prueba final.
 
 ## Cómo se eligen los hiperparámetros
 

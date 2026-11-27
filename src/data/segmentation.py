@@ -77,18 +77,20 @@ def background_colors(lab: np.ndarray, k: int = 3) -> np.ndarray:
     return centers[counts > 0.15 * len(border)]
 
 
-def initial_mask(lab: np.ndarray, centers: np.ndarray) -> np.ndarray:
+def initial_mask(lab: np.ndarray, centers: np.ndarray, dark_margin: float = 60) -> np.ndarray:
     """
     Máscara inicial: píxeles cuyo color está lejos de todos los colores de fondo.
 
     Parámetros:
         lab: imagen Lab float32 (H, W, 3).
         centers: colores de fondo (m, 3) de background_colors().
+        dark_margin: cuánto más oscuro que el fondo más oscuro debe ser un píxel sin color
+            para contarlo como fruta (podredumbre). Ver rescue_dark_rot().
 
     Retorna:
         Máscara binaria uint8 (H, W) con 255 = fruta.
 
-    Fórmula: score = min_j ||(a, b) - (a_j, b_j)|| + max(0, min_j L_j - L - 60).
+    Fórmula: score = min_j ||(a, b) - (a_j, b_j)|| + max(0, min_j L_j - L - dark_margin).
         La distancia usa solo cromaticidad (a, b) para que las sombras, que cambian el brillo
         pero no el color, no parezcan fruta; el segundo término recupera las manchas muy
         oscuras (podredumbre), que casi no tienen color. El umbral sale del método de Otsu.
@@ -96,7 +98,7 @@ def initial_mask(lab: np.ndarray, centers: np.ndarray) -> np.ndarray:
         https://doi.org/10.1109/TSMC.1979.4310076
     """
     dist = np.min([np.linalg.norm(lab[:, :, 1:] - c[1:], axis=2) for c in centers], axis=0)
-    dark = np.clip(np.min(centers[:, 0]) - lab[:, :, 0] - 60, 0, None)
+    dark = np.clip(np.min(centers[:, 0]) - lab[:, :, 0] - dark_margin, 0, None)
     score = cv2.normalize(dist + dark, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
     _, th = cv2.threshold(score, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
@@ -198,6 +200,51 @@ def refine_grabcut(img: np.ndarray, mask: np.ndarray) -> np.ndarray:
     cv2.grabCut(img, gc, None, bgd, fgd, 4, cv2.GC_INIT_WITH_MASK)
     out = np.where((gc == cv2.GC_FGD) | (gc == cv2.GC_PR_FGD), 255, 0).astype(np.uint8)
     return main_object(cv2.morphologyEx(out, cv2.MORPH_OPEN, k))
+
+
+# Rescate de podredumbre oscura (ver rescue_dark_rot).
+RESCUE_DARK_MARGIN = 40
+RESCUE_MIN_SOLIDITY_GAIN = 0.15
+
+
+def solidity(mask: np.ndarray) -> float:
+    """Área de la fruta / área de su contorno convexo: 1 = forma llena, < 1 = forma hundida."""
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if not contours:
+        return 0.0
+    contour = max(contours, key=cv2.contourArea)
+    hull_area = cv2.contourArea(cv2.convexHull(contour))
+    return cv2.contourArea(contour) / hull_area if hull_area else 0.0
+
+
+def rescue_dark_rot(small: np.ndarray, lab: np.ndarray, centers: np.ndarray,
+                    initial: np.ndarray, mask: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Recupera una zona podrida oscura que quedó fuera de la máscara.
+
+    Con un fondo oscuro o manchado, la podredumbre casi negra puede no ser "60 más oscura" que
+    el fondo y queda fuera: el recorte de un mango malo muestra solo su parte sana, con forma
+    de media luna. Solo si la máscara está hundida (solidez < 0,9) se repite con un margen más
+    permisivo (RESCUE_DARK_MARGIN) y se acepta si la forma se llena claramente (la solidez
+    sube al menos RESCUE_MIN_SOLIDITY_GAIN) sin contar más frutas. Una sombra o un pedazo de
+    fondo apenas cambian la solidez (+0,07 como mucho en las fotos revisadas); la podredumbre
+    recuperada la sube +0,22 y +0,36.
+
+    Límite: si un lado entero de la fruta es negro sobre un fondo también oscuro, la forma
+    sigue siendo redonda y no hay cómo distinguirlo por color.
+
+    Retorna:
+        (máscara inicial, máscara final) a usar; las mismas de entrada si no hay rescate.
+    """
+    before = solidity(mask)
+    if before >= 0.9:
+        return initial, mask
+    initial2 = initial_mask(lab, centers, RESCUE_DARK_MARGIN)
+    mask2 = refine_grabcut(small, main_object(initial2))
+    if (solidity(mask2) - before >= RESCUE_MIN_SOLIDITY_GAIN
+            and count_fruits(small, initial2, mask2) <= count_fruits(small, initial, mask)):
+        return initial2, mask2
+    return initial, mask
 
 
 def distance_peaks(mask: np.ndarray) -> tuple[np.ndarray, list]:
@@ -427,8 +474,10 @@ def process(img: np.ndarray) -> dict:
     if is_grayscale(lab):
         return {"status": "discard: grayscale", "mask": None, "contour": None,
                 "crop": center_crop(img), "crop_nobg": None, "d_norm": None}
-    initial = initial_mask(lab, background_colors(lab))
+    centers = background_colors(lab)
+    initial = initial_mask(lab, centers)
     mask_small = refine_grabcut(small, main_object(initial))
+    initial, mask_small = rescue_dark_rot(small, lab, centers, initial, mask_small)
     mask = cv2.resize(mask_small, (img.shape[1], img.shape[0]), interpolation=cv2.INTER_NEAREST)
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if not contours:

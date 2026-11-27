@@ -49,3 +49,36 @@ def test_different_photos_in_one_burst_are_not_conflicts(tmp_path, monkeypatch):
     records = [record("a.jpg", "good", "burst"), record("b.jpg", "bad", "burst")]
     inventory.merge_external_duplicates(records)
     assert {r.status for r in records} == {"labeled"}
+
+
+def test_afruitdb_sessions_group_bursts_and_keep_grades_together(tmp_path, monkeypatch):
+    """Fotos a segundos de distancia van juntas, aunque sean de calidades distintas; una
+    pausa larga abre otra sesión. La uva birmana no es una fruta del modelo y queda fuera."""
+    monkeypatch.setattr(config, "ROOT", tmp_path)
+    monkeypatch.setattr(config, "AFRUITDB_DIR", tmp_path / "afruitdb")
+    files = {"Apple/1st grade/IMG_20230930_172415.jpg": b"a",
+             "Apple/2nd grade/IMG_20230930_172421.jpg": b"b",
+             "Apple/2nd grade/IMG_20230930_181000.jpg": b"c",
+             "Apple/3rd grade/foto.jpg": b"d",
+             "Burmese_grape/1st grade/IMG_20230930_172415.jpg": b"e"}
+    for name, content in files.items():
+        path = tmp_path / "afruitdb" / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+    records = {r.filename.split("afruitdb/")[1]: r for r in inventory.afruitdb_records()}
+    assert set(records) == {name for name in files if name.startswith("Apple")}
+    first, second, later, loose = (records[n] for n in sorted(files)[:4])
+    assert first.quality == "good" and second.quality == "regular" and loose.quality == "bad"
+    assert first.group == second.group == "afruitdb:apple:20230930_1724"
+    assert later.group == "afruitdb:apple:20230930_1810"
+    assert loose.group == "afruitdb:apple:foto"
+    assert {r.source for r in records.values()} == {"afruitdb"}
+
+
+def test_quality_metrics_report_regular_by_source():
+    from src.training.train_models import quality_metrics
+    metrics = quality_metrics(["regular", "regular", "regular", "good"],
+                              ["regular", "good", "regular", "good"],
+                              ["agrifreshnet", "afruitdb", "afruitdb", "afruitdb"])
+    assert metrics["recall_regular_by_source"] == {"afruitdb": 0.5, "agrifreshnet": 1.0}
+    assert "f1_afruitdb" in metrics

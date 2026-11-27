@@ -13,7 +13,7 @@ Modelos clásicos (usan los 359 atributos de src/data/features.py)
         SVM lineal           - también lineal, pero busca el margen más ancho entre clases.
         Random Forest        - muchos árboles de decisión que votan; capta combinaciones de
                                color y textura que una recta no separa.
-    Fruta (12 productos):
+    Fruta (13 productos):
         Random Forest        - el mismo tipo de modelo, pero la etiqueta es la fruta.
 
     Para cada uno, GridSearchCV prueba todas las combinaciones de su rejilla con validación

@@ -22,7 +22,7 @@ La app usa tres archivos de `models/`, que crea `python -m src.main entrenar` y 
 
 El F1 de val que muestra la barra lateral sale de `results/entrenamiento_*.json` y `results/evaluacion_val.json`.
 
-La app muestra primero **qué fruta es**; si la probabilidad de la fruta es menor que `APP_MIN_PRODUCT_CONFIDENCE` (0,5, en `src/config.py`), dice que no la reconoce. `APP_MODEL` decide quién da el estado: `"ensemble"` (por defecto), `"random_forest"` o `"cnn"`. Si el modelo pedido no está disponible (por ejemplo, sin TensorFlow), la app usa el otro y lo avisa en pantalla. También avisa si la versión de scikit-learn instalada no es la 1.7.2 con la que se guardaron los modelos.
+La app muestra primero **qué fruta es**; si la probabilidad de la fruta es menor que `APP_MIN_PRODUCT_CONFIDENCE` (0,5, en `src/config.py`), dice que no la reconoce. `APP_MODEL` decide quién da el estado: `"random_forest"` (el elegido), `"ensemble"` o `"cnn"`. Si el modelo pedido no está disponible (por ejemplo, sin TensorFlow), la app usa el otro y lo avisa en pantalla. También avisa si la versión de scikit-learn instalada no es la 1.7.2 con la que se guardaron los modelos.
 
 ## Arquitectura
 
@@ -42,15 +42,15 @@ Una prueba (`tests/test_predictor.py`) verifica que los atributos calculados en 
 3. Si la foto está en escala de grises, tiene varias piezas o la máscara es dudosa, la app **no clasifica**: explica el motivo y pide otra foto.
 4. `segmentation.model_inputs()` produce el recorte y la máscara de 128×128.
 5. Random Forest recibe los 359 atributos; la CNN recibe el recorte con el fondo anulado.
-6. Con `APP_MODEL = "ensemble"`, la clase es el argmax de $0{,}5\,p_\text{RF}+0{,}5\,p_\text{CNN}$, el mismo voto que mide `python -m src.main evaluar`. Las clases de RF se reordenan antes de sumar.
+6. Con `APP_MODEL = "random_forest"`, la clase es la de mayor probabilidad del RF. Si se cambia a `"ensemble"`, la clase es el argmax de $0{,}5\,p_\text{RF}+0{,}5\,p_\text{CNN}$, el mismo voto que mide `python -m src.main evaluar`. Las clases de RF se reordenan antes de sumar.
 7. La interfaz muestra la clase, las probabilidades, el contorno detectado, lo que recibe el modelo, la categoría de tamaño, $d_n$ y la predicción de cada modelo por separado.
 8. Si la probabilidad máxima es menor que `config.APP_MIN_CONFIDENCE` (0,55, provisional), o si RF y la CNN no coinciden, pide revisión manual.
 
 ## Decisiones de diseño
 
-- **Ensamble como opción por defecto:** con el segundo intento de reparto, RF y la CNN de 4 bloques empataban en F1 (0,857 y 0,858) y el promedio bajaba los errores `bad→good` de 121 a 79. La elección final es del equipo antes de abrir test; la app solo cambia `APP_MODEL`.
-- **Costo del ensamble:** TensorFlow pasa a ser obligatorio para la decisión por defecto, y cada foto ejecuta los dos modelos. Sin TensorFlow la app sigue funcionando con RF.
-- **Aviso de dominio:** la pantalla indica que el desempeño con fotos de celular no está medido. En val, RF y la CNN fallaban 3 de las 4 fotos propias; la prueba con fotos de celular lo mide de verdad.
+- **Random Forest como decisión final:** se eligió en val, antes de abrir test. RF, la CNN y el ensamble empatan en F1 (0,762, 0,738 y 0,769, con intervalos solapados). Pero RF deja pasar como buenas 41 frutas malas, frente a 82 del ensamble y 120 de la CNN, y encuentra más regulares. Con F1 empatado decide el error más caro (fruta mala vendida como buena).
+- **Sin TensorFlow obligatorio:** al decidir RF, la app funciona sin la CNN. Con el interruptor "Usar la CNN" se puede ver su opinión como segunda referencia.
+- **Aviso de dominio:** la pantalla indica que el desempeño con fotos de celular se mide aparte. En val, RF y la CNN fallaban 3 de las 4 fotos propias; por eso la mitad de las fotos de celular del curso entra al entrenamiento y la otra mitad lo mide.
 - **Rechazar antes que adivinar:** una foto con varias piezas o con mala segmentación produciría atributos sin sentido; la app lo dice en lugar de mostrar una clase con falsa seguridad.
 - **Lógica separada de la interfaz:** `predictor.py` se prueba con pytest y se puede reutilizar en una simulación de línea de empaque.
 - **Sin almacenamiento:** las fotos se procesan en memoria y no se escriben en disco.

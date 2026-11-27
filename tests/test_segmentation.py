@@ -71,3 +71,52 @@ def test_square_crop_uses_configured_margin():
     """El lado del recorte es el lado mayor de la caja más el margen de config en cada lado."""
     crop = segmentation.square_crop(np.zeros((300, 300, 3), np.uint8), (100, 100, 50, 80))
     assert crop.shape[0] == int(80 * (1 + 2 * config.CROP_MARGIN))
+
+
+def _disk(bite: bool = False, blob: bool = False) -> np.ndarray:
+    """Máscara de una fruta redonda. bite: le falta un mordisco abierto, como cuando la
+    podredumbre quedó fuera (media luna). blob: una sombra pegada por fuera."""
+    mask = np.zeros((200, 200), np.uint8)
+    cv2.circle(mask, (100, 100), 70, 255, -1)
+    if bite:
+        cv2.circle(mask, (100, 60), 50, 0, -1)
+    if blob:
+        cv2.circle(mask, (100, 178), 14, 255, -1)
+    return mask
+
+
+def _rescue(monkeypatch, before: np.ndarray, after: np.ndarray, fruits=(1, 1)) -> np.ndarray:
+    """Corre rescue_dark_rot con máscaras controladas: before con margen 60, after con 40."""
+    monkeypatch.setattr(segmentation, "initial_mask", lambda lab, c, margin=60: after)
+    monkeypatch.setattr(segmentation, "refine_grabcut", lambda small, mask: mask)
+    monkeypatch.setattr(segmentation, "main_object", lambda mask: mask)
+    counts = iter(fruits[::-1])  # se llama primero con la nueva y luego con la original
+    monkeypatch.setattr(segmentation, "count_fruits", lambda small, initial, mask: next(counts))
+    _, mask = segmentation.rescue_dark_rot(None, None, None, before, before)
+    return mask
+
+
+def test_rot_lost_from_a_round_fruit_is_recovered(monkeypatch):
+    """Media luna (falta la parte podrida) -> con margen 40 vuelve a ser redonda: se acepta."""
+    crescent, full = _disk(bite=True), _disk()
+    assert segmentation.solidity(crescent) < 0.9 <= segmentation.solidity(full)
+    assert np.array_equal(_rescue(monkeypatch, crescent, full), full)
+
+
+def test_a_shadow_does_not_count_as_rot(monkeypatch):
+    """Si lo nuevo es una sombra pegada, la forma no se llena: se queda la máscara original."""
+    crescent = _disk(bite=True)
+    with_shadow = cv2.bitwise_or(crescent, _disk(blob=True) - _disk())
+    assert np.array_equal(_rescue(monkeypatch, crescent, with_shadow), crescent)
+
+
+def test_rescue_never_adds_fruits(monkeypatch):
+    crescent, full = _disk(bite=True), _disk()
+    assert np.array_equal(_rescue(monkeypatch, crescent, full, fruits=(1, 2)), crescent)
+
+
+def test_full_shapes_are_left_alone(monkeypatch):
+    full = _disk()
+    monkeypatch.setattr(segmentation, "initial_mask", lambda *a, **k: pytest.fail("no debía repetir"))
+    _, mask = segmentation.rescue_dark_rot(None, None, None, full, full)
+    assert mask is full

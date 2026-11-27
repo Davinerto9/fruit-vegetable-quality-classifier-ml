@@ -1,30 +1,41 @@
 """
-Prueba final con fotos de celular del pool de la clase, etiquetadas a ciegas.
+Fotos de celular del pool de la clase: la mitad entrena el modelo y la otra mitad es la
+prueba final, etiquetada a ciegas.
 
-Fase CRISP-DM: Evaluación
+Fase CRISP-DM: Preparación de datos y Evaluación
 Uso (en orden):
     # 0) descargar la carpeta de Drive "Photos of Fruits and Vegetables | APO III" en
     #    data/external/raw/<Fruta>/... (una carpeta por fruta)
-    python -m src.main celular ingerir     # recorta cada foto y le da un código ciego
+    python -m src.main celular ingerir     # recorta cada foto, le da un código ciego y la
+                                           # asigna a la mitad "entrenar" o "prueba"
     python -m src.main celular hojas       # hojas para etiquetar el estado, sin el modelo
     #    llenar data/external/labeling/annotator_A.csv (B es opcional: otra persona)
     python -m src.main celular acuerdo     # solo si hay B: kappa y desacuerdos a resolver
-    python -m src.main celular finalizar   # etiqueta final de cada foto
-    python -m src.main celular evaluar --confirmo   # UNA sola vez
+    python -m src.main celular finalizar   # etiqueta final y pasa la mitad "entrenar" al
+                                           # entrenamiento (data/processed/celular/)
+    python -m src.main dividir; python -m src.main atributos; python -m src.main entrenar
+    python -m src.main celular evaluar --confirmo   # la mitad "prueba", UNA sola vez
 
 Por qué así
 - La fruta se sabe por la carpeta de Drive (Apple, Banana, ...): esa etiqueta es gratis.
-- El estado (good / regular / bad) hay que ponerlo a mano para poder medir. Se hace a CIEGAS:
-  cada foto tiene un código EXT-XXXXXXXX y la hoja no muestra nada del modelo, para que lo
-  que diga la app no influya en quien etiqueta.
-- Ninguna foto de celular se usa para entrenar ni para ajustar nada: son una prueba externa
-  de cómo funciona el modelo con fotos "de la vida real", y se evalúan una sola vez.
-- Fotos de la misma sesión (misma cámara, mismo día) se parecen entre sí: el intervalo de
-  confianza remuestrea sesiones completas.
-- Frutas que el modelo no conoce (p. ej. mango) quedan fuera (in_scope=False).
+- Las dos mitades se separan por SESIÓN, no foto por foto: misma fruta, misma cámara y fotos con
+  menos de 10 minutos entre sí. Son casi iguales, y si quedaran una en cada mitad la prueba
+  saldría inflada. Una fruta con una sola sesión queda entera en "prueba".
+- Las fotos idénticas a alguna de data/own/ (que ya entrena) se apartan al ingerir.
+  En cada fruta se reparten las sesiones al azar (semilla fija) hasta tener ≈50 % de las fotos
+  en cada mitad. Se hace al ingerir, ANTES de etiquetar y sin mirar ningún resultado.
+- La mitad "entrenar" se suma a train: el modelo aprende cómo se ven las fotos de celular.
+- La mitad "prueba" no se usa para entrenar ni para ajustar nada y se evalúa una sola vez. Es
+  la medida más cercana al uso real, porque el fondo ya no delata la fuente.
+- El estado (good / regular / bad) se pone a mano en las dos mitades, a CIEGAS: cada foto tiene
+  un código EXT-XXXXXXXX y la hoja no dice a qué mitad pertenece ni qué opina el modelo.
+- Como se toman varias fotos seguidas de la misma pieza, la hoja va en orden de toma y basta
+  escribir el estado en la primera foto de cada pieza; las vacías copian la anterior.
+- El intervalo de confianza remuestrea sesiones completas.
+- Frutas que el modelo no conoce (p. ej. kiwi) quedan fuera (in_scope=False).
 
-Archivos (en data/external/, fuera de Git): manifest.csv, crops/, preview/, labeling/,
-labels_final.csv. Resultado: results/evaluacion_celular.json.
+Archivos (en data/external/, fuera de Git): manifest.csv (con la columna half), crops/,
+preview/, labeling/, labels_final.csv. Resultado: results/evaluacion_celular.json.
 """
 from __future__ import annotations
 
@@ -50,8 +61,9 @@ from src.evaluation.evaluate_models import group_bootstrap
 
 EXTERNAL = config.ROOT / "data" / "external"
 EXTENSIONS = {".jpg", ".jpeg", ".png", ".heic", ".heif", ".webp"}
-FIELDS = ("blind_id", "original", "sha256", "product", "in_scope", "session",
+FIELDS = ("blind_id", "original", "sha256", "product", "in_scope", "session", "half",
           "status", "d_norm", "crop", "crop_mask", "width", "height")
+HALVES = ("entrenar", "prueba")
 _TAGS = {name: tag for tag, name in ExifTags.TAGS.items()}
 
 
@@ -85,10 +97,15 @@ def read_photo(path: Path) -> tuple[np.ndarray, dict]:
     return cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR), meta
 
 
+# Dos fotos de la misma fruta y la misma cámara separadas por más de esto son sesiones distintas.
+SESSION_GAP_MINUTES = 10
+
+
 def session_of(path: Path, meta: dict) -> str:
     """
-    Sesión de captura: misma cámara y mismo día según EXIF. Sin EXIF (p. ej. reenviadas por
+    Sesión base: carpeta de la fruta, cámara y día según EXIF. Sin EXIF (p. ej. reenviadas por
     WhatsApp), se usa la carpeta y la serie del nombre (IMG_31xx → bloque de 50).
+    split_by_time() la parte después en bloques de tiempo.
     """
     product_dir = path.parent.name.lower()
     if meta.get("datetime"):
@@ -100,6 +117,44 @@ def session_of(path: Path, meta: dict) -> str:
     if stem.startswith("img_") and digits:
         return f"{product_dir}:series:{int(digits) // 50}"
     return f"{product_dir}:noexif"
+
+
+def split_by_time(rows: list[dict], times: dict[str, str],
+                  gap_minutes: int = SESSION_GAP_MINUTES) -> None:
+    """
+    Parte cada sesión base en bloques: una pausa de más de gap_minutes abre un bloque nuevo
+    (":b1", ":b2", ...). Así, una misma persona que fotografía la misma fruta a las 10:37 y
+    otra vez a las 11:48 deja dos sesiones, y las fotos de un mismo bloque (segundos o minutos
+    de diferencia, casi iguales) quedan siempre juntas.
+
+    Parámetros:
+        rows: filas del manifiesto; se modifica su campo "session".
+        times: blind_id -> "AAAA:MM:DD HH:MM:SS" (EXIF). Las filas sin hora no se tocan.
+    """
+    def minutes(stamp: str) -> float:
+        moment = datetime.strptime(stamp[:19], "%Y:%m:%d %H:%M:%S")
+        return moment.timestamp() / 60
+
+    by_session: dict[str, list[dict]] = {}
+    for row in rows:
+        if times.get(row["blind_id"]):
+            by_session.setdefault(row["session"], []).append(row)
+    for base, members in by_session.items():
+        members.sort(key=lambda r: times[r["blind_id"]])
+        block, previous = 1, None
+        for row in members:
+            now = minutes(times[row["blind_id"]])
+            if previous is not None and now - previous > gap_minutes:
+                block += 1
+            row["session"] = f"{base}:b{block}"
+            previous = now
+
+
+def own_hashes() -> dict[str, str]:
+    """SHA-256 de las fotos de data/own/, que ya entrenan: no pueden estar en el pool."""
+    folder = config.ROOT / "data" / "own"
+    return {hashlib.sha256(path.read_bytes()).hexdigest(): path.name
+            for path in sorted(folder.glob("*")) if path.suffix.lower() in EXTENSIONS}
 
 
 def _write(path: Path, image: np.ndarray, extension: str = ".png") -> None:
@@ -116,16 +171,61 @@ def blind_id(sha: str) -> str:
     return "EXT-" + hashlib.sha256(("blind:" + sha).encode()).hexdigest()[:8].upper()
 
 
+def assign_halves(rows: list[dict], seed: int = config.SEED,
+                  start: Counter | None = None) -> dict[str, str]:
+    """
+    Asigna cada sesión completa a "entrenar" o "prueba", fruta por fruta.
+
+    Las sesiones de cada fruta se barajan con semilla fija y cada una va a la mitad que lleva
+    menos fotos de esa fruta (empezando por "prueba", para que una fruta con una sola sesión
+    quede para medir). Solo usa fruta y sesión: ninguna etiqueta de estado.
+
+    Parámetros:
+        start: fotos que ya tiene cada (fruta, mitad) de una ingesta anterior, para que las
+            sesiones nuevas equilibren contando con ellas.
+
+    Retorna:
+        dict sesión -> mitad.
+    """
+    rng = random.Random(seed)
+    start = start or Counter()
+    halves = {}
+    for product in sorted({r["product"] for r in rows}):
+        sizes = Counter(r["session"] for r in rows if r["product"] == product)
+        sessions = sorted(sizes)
+        rng.shuffle(sessions)
+        count = {half: start[(product, half)] for half in ("prueba", "entrenar")}
+        for session in sessions:
+            half = min(("prueba", "entrenar"), key=lambda h: count[h])
+            halves[session] = half
+            count[half] += sizes[session]
+    return halves
+
+
 def ingest(raw: Path, out: Path = EXTERNAL) -> Path:
+    """
+    Recorta cada foto nueva, le da un código ciego y asigna su sesión a una mitad.
+
+    Si ya hubo una ingesta, solo procesa las fotos que no estén en manifest.csv (se reconocen
+    por su contenido): las fotos anteriores conservan su código, su sesión y su mitad, y las
+    sesiones nuevas se reparten contando con lo que ya hay. No se permite después de evaluar.
+    """
     manifest_path = out / "manifest.csv"
-    if manifest_path.exists():
-        raise FileExistsError(f"Ya existe {manifest_path}; la ingesta no se repite sobre el mismo pool.")
+    if LOCK.exists():
+        raise RuntimeError("Las fotos de celular ya se evaluaron: no se agregan más.")
+    old_rows = read_manifest(out) if manifest_path.exists() else []
+    known = {r["sha256"] for r in old_rows}
     photos = sorted(p for p in raw.rglob("*") if p.suffix.lower() in EXTENSIONS)
     if not photos:
         raise FileNotFoundError(f"No hay fotos en {raw}")
+    photos = [p for p in photos if hashlib.sha256(p.read_bytes()).hexdigest() not in known]
+    if old_rows:
+        print(f"Ya había {len(old_rows)} fotos ingeridas; fotos nuevas: {len(photos)}.")
+    if not photos:
+        return manifest_path
     (out / "crops").mkdir(parents=True, exist_ok=True)
     (out / "preview").mkdir(parents=True, exist_ok=True)
-    rows, seen = [], {}
+    rows, seen, times, own = [], {}, {}, own_hashes()
     for path in photos:
         sha = hashlib.sha256(path.read_bytes()).hexdigest()
         if sha in seen:
@@ -134,14 +234,23 @@ def ingest(raw: Path, out: Path = EXTERNAL) -> Path:
         seen[sha] = path
         product_name = path.parent.name.lower().strip()
         product = config.PRODUCT_NAMES.get(product_name, product_name)
+        if sha in own:
+            # La misma foto ya está en data/own/ y entrena: si cayera en la prueba sería trampa.
+            rows.append({"blind_id": blind_id(sha), "original": path.relative_to(raw).as_posix(),
+                         "sha256": sha, "product": product,
+                         "in_scope": str(product in config.PRODUCTS), "session": "", "half": "",
+                         "status": f"duplicate: data/own/{own[sha]}", "d_norm": "", "crop": "",
+                         "crop_mask": "", "width": "", "height": ""})
+            continue
         image, meta = read_photo(path)
+        times[blind_id(sha)] = meta.get("datetime", "")
         result = segmentation.process(image)
         scale = min(1.0, 1024 / max(image.shape[:2]))
         preview = cv2.resize(image, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
         _write(out / "preview" / f"{blind_id(sha)}.jpg", preview, ".jpg")
         row = {"blind_id": blind_id(sha), "original": path.relative_to(raw).as_posix(), "sha256": sha,
                "product": product, "in_scope": str(product in config.PRODUCTS),
-               "session": session_of(path, meta), "status": result["status"],
+               "session": session_of(path, meta), "half": "", "status": result["status"],
                "d_norm": "" if result.get("d_norm") is None else f"{result['d_norm']:.4f}",
                "crop": "", "crop_mask": "", "width": image.shape[1], "height": image.shape[0]}
         if result["status"] == "ok":
@@ -151,14 +260,36 @@ def ingest(raw: Path, out: Path = EXTERNAL) -> Path:
             _write(out / row["crop_mask"], mask)
         rows.append(row)
 
-    with manifest_path.open("x", encoding="utf-8", newline="") as file:
+    split_by_time(rows, times)
+    old_sessions = {r["session"] for r in old_rows if r["session"]}
+    for row in rows:
+        if row["session"] in old_sessions:  # mismo nombre que una sesión anterior: es otra
+            row["session"] += ":nueva"
+    usable = [r for r in rows if r["status"] == "ok" and r["in_scope"] == "True"]
+    before = Counter((r["product"], r["half"]) for r in old_rows if r["half"])
+    halves = assign_halves(usable, start=before)
+    for row in usable:
+        row["half"] = halves[row["session"]]
+    temporary = manifest_path.with_suffix(".tmp")
+    with temporary.open("w", encoding="utf-8", newline="") as file:
         writer = csv.DictWriter(file, fieldnames=FIELDS)
         writer.writeheader()
-        writer.writerows(rows)
-    by = Counter((r["product"], r["status"] == "ok") for r in rows)
+        writer.writerows([{k: r.get(k, "") for k in FIELDS} for r in old_rows] + rows)
+    temporary.replace(manifest_path)
+    def state(row):
+        return "ok" if row["status"] == "ok" else (
+            "ya en data/own" if row["status"].startswith("duplicate") else "rechazada")
+    by = Counter((r["product"], state(r)) for r in rows)
     print(f"{len(rows)} fotos ingeridas en {manifest_path}")
-    for (product, ok), n in sorted(by.items()):
-        print(f"  {product:12s} {'ok' if ok else 'rechazada':9s} {n}")
+    for (product, name), n in sorted(by.items()):
+        print(f"  {product:12s} {name:15s} {n}")
+    everything = [r for r in old_rows + rows if r["status"] == "ok" and r["in_scope"] == "True"]
+    split = Counter((r["product"], r["half"]) for r in everything)
+    sessions = Counter(r["product"] for r in {r["session"]: r for r in everything}.values())
+    print("Mitades con todas las fotos (fotos):")
+    for product in sorted({r["product"] for r in everything}):
+        print(f"  {product:12s} {sessions[product]:2d} sesiones | entrenar "
+              f"{split[(product, 'entrenar')]:4d} | prueba {split[(product, 'prueba')]:4d}")
     return manifest_path
 
 
@@ -167,42 +298,84 @@ def read_manifest(out: Path = EXTERNAL) -> list[dict[str, str]]:
         return list(csv.DictReader(file))
 
 
+SHEET_FIELDS = ("n", "blind_id", "product", "quality", "unusable", "notes")
+
+
+def _sheet_has_labels(path: Path) -> bool:
+    return path.is_file() and any(_quality(row) or row.get("unusable", "").strip()
+                                  for row in _read_rows(path))
+
+
 def sheets(out: Path = EXTERNAL) -> None:
     """
-    Hojas de etiquetado: A (obligatoria) y B (opcional, para medir el acuerdo), en orden
-    aleatorio distinto, sin nombre original, sin sesión y sin ninguna salida del modelo. Solo
-    fotos con segmentación ok de frutas que el modelo conoce.
+    Hojas de etiquetado: A (obligatoria) y B (opcional, para medir el acuerdo).
+
+    Las fotos van en el orden en que se tomaron, agrupadas por fruta y numeradas (#1, #2, ...).
+    Como se toman varias fotos seguidas de la misma pieza, basta escribir el estado en la
+    PRIMERA foto de cada pieza: una casilla vacía significa "igual que la foto anterior de la
+    misma fruta" (finalize() la rellena). No se muestra nombre original, sesión, mitad ni nada
+    del modelo. Solo fotos con segmentación ok de frutas que el modelo conoce.
+
+    Si una hoja ya tiene etiquetas (de este formato o del anterior), se rehace conservando cada
+    etiqueta en su foto y se guarda una copia; así se pueden agregar fotos nuevas después.
     """
     rows = [r for r in read_manifest(out) if r["status"] == "ok" and r["in_scope"] == "True"]
+    rows.sort(key=lambda r: (r["product"], r["original"]))  # IMG_3175, IMG_3176...: orden de toma
     labeling = out / "labeling"
     labeling.mkdir(parents=True, exist_ok=True)
-    for annotator, seed in (("A", 1), ("B", 2)):
-        order = rows[:]
-        random.Random(seed).shuffle(order)
+    for annotator in ("A", "B"):
         sheet = labeling / f"annotator_{annotator}.csv"
-        if sheet.exists():
-            raise FileExistsError(f"Ya existe {sheet}: no se regeneran hojas en uso.")
-        with sheet.open("x", encoding="utf-8", newline="") as file:
-            writer = csv.DictWriter(file, fieldnames=("blind_id", "product", "quality", "size",
-                                                      "unusable", "notes"))
+        previous: dict[str, dict[str, str]] = {}
+        new_ids: set[str] = set()
+        if _sheet_has_labels(sheet):
+            old_rows = _read_rows(sheet)
+            previous = {r["blind_id"]: r for r in old_rows}
+            name = "formato_anterior" if "n" not in old_rows[0] else "respaldo"
+            backup = labeling / f"annotator_{annotator}_{name}.csv"
+            backup.write_bytes(sheet.read_bytes())
+            kept = sum(1 for r in old_rows if _quality(r) or r.get("unusable"))
+            new_ids = {r["blind_id"] for r in rows} - set(previous)
+            print(f"Hoja {annotator}: se conservan {kept} etiquetas (copia en {backup.name}); "
+                  f"fotos nuevas: {len(new_ids)}.")
+        with sheet.open("w", encoding="utf-8", newline="") as file:
+            writer = csv.DictWriter(file, fieldnames=SHEET_FIELDS)
             writer.writeheader()
-            writer.writerows({"blind_id": r["blind_id"], "product": r["product"], "quality": "",
-                              "size": "", "unusable": "", "notes": ""} for r in order)
-        cards = "\n".join(
-            f'<figure><img loading="lazy" src="../preview/{r["blind_id"]}.jpg">'
-            f'<figcaption>{r["blind_id"]} · {html.escape(r["product"])}</figcaption></figure>'
-            for r in order)
+            first_new, last = [], None
+            for i, r in enumerate(rows, start=1):
+                old = previous.get(r["blind_id"], {})
+                writer.writerow({"n": i, "blind_id": r["blind_id"], "product": r["product"],
+                                 "quality": _quality(old), "unusable": old.get("unusable", ""),
+                                 "notes": old.get("notes", "")})
+                is_new = r["blind_id"] in new_ids
+                if is_new and last != (r["product"], True):
+                    first_new.append(f"#{i} ({r['product']})")
+                last = (r["product"], is_new)
+            if first_new:
+                print(f"  Las fotos nuevas empiezan en {', '.join(first_new)}: escribe el estado "
+                      "en esa foto aunque sea igual al de la anterior.")
+        sections, current = [], None
+        for i, r in enumerate(rows, start=1):
+            if r["product"] != current:
+                current = r["product"]
+                sections.append(f"<h2>{html.escape(current)}</h2>")
+            sections.append(f'<figure><img loading="lazy" src="../preview/{r["blind_id"]}.jpg">'
+                            f'<figcaption><b>#{i}</b> · {r["blind_id"]}</figcaption></figure>')
         (labeling / f"sheet_{annotator}.html").write_text(
             "<!DOCTYPE html><meta charset='utf-8'><title>Etiquetado ciego "
-            f"{annotator}</title><style>body{{font-family:sans-serif}}figure{{display:inline-block;"
-            "width:300px;margin:8px}}img{width:300px;height:300px;object-fit:contain;background:#eee}"
-            "</style><p>Etiqueta calidad (good / regular / bad) y tamaño (small / medium / large) "
-            "según docs/criterios-calidad.md, en annotator_" + annotator + ".csv. Marca unusable=1 si "
-            "la foto no permite juzgar. No consultes al otro anotador ni la app.</p>" + cards,
-            encoding="utf-8")
-    print(f"Hojas en {labeling}: {len(rows)} fotos. Llena annotator_A.csv; annotator_B.csv es "
-          "opcional (otra persona, sin mirar A) para reportar el acuerdo.")
-
+            f"{annotator}</title><style>body{{font-family:sans-serif;max-width:1400px}}"
+            "figure{display:inline-block;width:210px;margin:4px}img{width:210px;height:210px;"
+            "object-fit:contain;background:#eee}figcaption{font-size:14px}h2{margin-top:28px}"
+            "</style><h1>Etiquetado ciego " + annotator + "</h1><p>Las fotos están en el orden "
+            "en que se tomaron. En <b>annotator_" + annotator + ".csv</b> escribe en la columna "
+            "<b>quality</b> <code>good</code>, <code>regular</code> o <code>bad</code> "
+            "(docs/criterios-calidad.md) <b>solo en la primera foto de cada pieza nueva</b> (cada "
+            "manzana, limón... distinto): una casilla vacía significa «igual que la foto anterior». "
+            "Si la pieza cambia y tiene el mismo estado, igual escríbelo: así queda claro. Escribe <code>1</code> en "
+            "<b>unusable</b> si una foto no deja juzgar. No abras la app ni mires la hoja de la "
+            "otra persona.</p>" + "".join(sections), encoding="utf-8")
+    print(f"Hojas en {labeling}: {len(rows)} fotos en orden de toma. En annotator_A.csv escribe "
+          "el estado solo en la primera foto de cada pieza (las vacías copian la anterior). "
+          "annotator_B.csv es opcional: otra persona, sin mirar A, para medir el acuerdo.")
 
 
 LABELING = EXTERNAL / "labeling"
@@ -210,11 +383,49 @@ LOCK = config.RESULTS / "celular_evaluation.lock"
 CLASSES = np.asarray(config.QUALITY_CLASSES)
 
 
+def _read_rows(path: Path) -> list[dict[str, str]]:
+    """
+    Lee un CSV aunque Excel lo haya guardado con ";" o en codificación de Windows.
+    """
+    raw = path.read_bytes()
+    try:
+        text = raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        text = raw.decode("cp1252")
+    first = text.splitlines()[0] if text else ""
+    delimiter = ";" if first.count(";") > first.count(",") else ","
+    rows = list(csv.DictReader(text.splitlines(), delimiter=delimiter))
+    return [{(k or "").strip(): (v or "").strip() for k, v in row.items()} for row in rows]
+
+
+def fill_down(rows: list[dict[str, str]]) -> list[dict[str, str]]:
+    """
+    En una hoja de etiquetado, una casilla de quality vacía toma el valor de la foto anterior
+    de la misma fruta (orden de la columna n). La primera foto de cada fruta debe tenerlo.
+    """
+    rows = sorted(rows, key=lambda r: int(r["n"]))
+    last: dict[str, str] = {}
+    for row in rows:
+        if row.get("unusable"):
+            continue
+        quality = row.get("quality", "").lower()
+        if quality:
+            last[row["product"]] = quality
+        elif row["product"] in last:
+            row["quality"] = last[row["product"]]
+        else:
+            raise ValueError(f"La foto #{row['n']} es la primera de {row['product']} y no tiene "
+                             "estado: escríbelo ahí.")
+    return rows
+
+
 def _read(path: Path) -> dict[str, dict[str, str]]:
     if not path.is_file():
         return {}
-    with path.open(encoding="utf-8-sig", newline="") as file:
-        return {row["blind_id"]: row for row in csv.DictReader(file)}
+    rows = _read_rows(path)
+    if rows and "n" in rows[0] and any(r.get("quality") for r in rows):
+        rows = fill_down(rows)
+    return {row["blind_id"]: row for row in rows}
 
 
 def _quality(row: dict[str, str]) -> str:
@@ -278,13 +489,69 @@ def finalize(labeling: Path = LABELING, out: Path = EXTERNAL) -> Path:
         writer.writeheader()
         writer.writerows(rows)
     print(f"{len(rows)} etiquetas finales en {path}: {dict(Counter(r['quality'] for r in rows))}")
+    export_training(out)
     return path
 
 
-def evaluation_rows(out: Path = EXTERNAL) -> list[dict[str, str]]:
+def labeled_rows(out: Path = EXTERNAL, half: str | None = None) -> list[dict[str, str]]:
+    """Fotos con segmentación ok, fruta conocida y etiqueta final; opcionalmente de una mitad."""
     labels = _read(out / "labels_final.csv")
     return [dict(r, quality=labels[r["blind_id"]]["quality"]) for r in read_manifest(out)
-            if r["status"] == "ok" and r["in_scope"] == "True" and r["blind_id"] in labels]
+            if r["status"] == "ok" and r["in_scope"] == "True" and r["blind_id"] in labels
+            and (half is None or r["half"] == half)]
+
+
+def export_training(out: Path = EXTERNAL, crops_dir: Path | None = None) -> Path:
+    """
+    Copia los recortes de la mitad "entrenar" a data/processed/celular/ (al lado de crops/)
+    y escribe celular_train.csv, que src/data/split.py agrega a train. Cada sesión es un grupo.
+    Las rutas quedan relativas a crops/ ("../celular/..."), como las del resto de recortes.
+    """
+    crops_dir = crops_dir or config.CROPS_DIR
+    target = crops_dir.parent / config.PHONE_TRAIN_DIR.name
+    (target / "images").mkdir(parents=True, exist_ok=True)
+    (target / "masks").mkdir(parents=True, exist_ok=True)
+    rows = []
+    for r in labeled_rows(out, "entrenar"):
+        name = f"{r['blind_id']}.png"
+        (target / "images" / name).write_bytes((out / r["crop"]).read_bytes())
+        (target / "masks" / name).write_bytes((out / r["crop_mask"]).read_bytes())
+        crop = f"../{target.name}/images/{name}"
+        mask = f"../{target.name}/masks/{name}"
+        rows.append({"filename": f"data/external/raw/{r['original']}", "product": r["product"],
+                     "quality": r["quality"], "source": "celular", "size": "",
+                     "group": f"celular:{r['session']}", "status": "labeled",
+                     "decision": "candidate", "d_norm": r["d_norm"], "crop": crop,
+                     "crop_mask": mask, "blind_id": r["blind_id"]})
+    path = target / config.PHONE_TRAIN_CSV.name
+    with path.open("w", encoding="utf-8", newline="") as file:
+        writer = csv.DictWriter(file, fieldnames=list(rows[0]) if rows else ["filename"])
+        writer.writeheader()
+        writer.writerows(rows)
+    print(f"{len(rows)} fotos de la mitad 'entrenar' pasan al entrenamiento ({path}). "
+          "Ahora corre: dividir, atributos y entrenar.")
+    return path
+
+
+def check_halves_apart(out: Path = EXTERNAL, split_path: Path | None = None) -> None:
+    """Ninguna foto ni sesión de la mitad "prueba" puede estar en el reparto de entrenamiento."""
+    split_path = split_path or config.SPLITS_CSV
+    test = labeled_rows(out, "prueba")
+    if not split_path.is_file():
+        return
+    with split_path.open(encoding="utf-8-sig", newline="") as file:
+        used = [r for r in csv.DictReader(file) if r.get("source") == "celular"]
+    files = {r["filename"] for r in used}
+    groups = {r["group"] for r in used}
+    leaked = [r["blind_id"] for r in test if f"data/external/raw/{r['original']}" in files
+              or f"celular:{r['session']}" in groups]
+    if leaked:
+        raise RuntimeError(f"{len(leaked)} fotos de la mitad 'prueba' están en el entrenamiento.")
+
+
+def evaluation_rows(out: Path = EXTERNAL) -> list[dict[str, str]]:
+    """Las fotos que se miden: solo la mitad "prueba"."""
+    return labeled_rows(out, "prueba")
 
 
 def session_bootstrap(y, pred, sessions, score, n=2000, seed=config.SEED) -> list[float]:
@@ -325,6 +592,7 @@ def evaluate(confirm: bool) -> dict:
     rows = evaluation_rows()
     if not rows:
         raise ValueError("No hay fotos evaluables (¿falta labels_final.csv?).")
+    check_halves_apart()
     models = load_all()
     _acquire_lock()  # todo lo que podía fallar ya cargó
 
@@ -354,10 +622,25 @@ def evaluate(confirm: bool) -> dict:
                     "ensemble": summarize(y, CLASSES[((1 - w) * p_rf + w * p_cnn).argmax(1)],
                                           sessions)},
     }
+    # Por fruta, separando las que tuvieron fotos de celular en el entrenamiento: en esas, la
+    # prueba puede incluir las mismas piezas fotografiadas en otro momento (más optimista).
+    trained = {r["product"] for r in labeled_rows(half="entrenar")}
+    final = {"random_forest": p_rf, "cnn": p_cnn, "ensemble": (1 - w) * p_rf + w * p_cnn}
+    quality_pred = CLASSES[final[config.APP_MODEL].argmax(1)]
+    report["final_model"] = config.APP_MODEL
+    report["by_product"] = {
+        product: {"n": int(mask.sum()), "phone_photos_in_training": product in trained,
+                  "fruit_accuracy": float(accuracy_score(y_product[mask], product_pred[mask])),
+                  "quality_f1_final": float(quality_f1(y[mask], quality_pred[mask]))}
+        for product in sorted(set(y_product)) for mask in [y_product == product]}
     path = config.RESULTS / "evaluacion_celular.json"
     path.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     lo, hi = report["fruit"]["accuracy_ci95"]
     print(f"Fruta: accuracy {report['fruit']['accuracy']:.3f} [{lo:.3f}; {hi:.3f}]")
+    for product, item in report["by_product"].items():
+        seen = "con fotos de celular en train" if item["phone_photos_in_training"] else "nunca vista en celular"
+        print(f"  {product:10s} n={item['n']:3d} | fruta {item['fruit_accuracy']:.2f} | "
+              f"estado F1 {item['quality_f1_final']:.2f} | {seen}")
     for name, item in report["quality"].items():
         lo, hi = item["f1_macro_ci95"]
         print(f"Estado, {name:>13}: F1 {item['f1_macro']:.3f} [{lo:.3f}; {hi:.3f}] | "

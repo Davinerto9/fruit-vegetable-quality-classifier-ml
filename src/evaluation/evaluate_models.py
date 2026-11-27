@@ -179,13 +179,15 @@ def run(partition: str = "val", confirm: bool = False) -> dict:
     report = {
         "partition": partition, "test_used": is_test, "n": len(rows),
         "n_groups": int(meta["group"].nunique()),
+        "final_model": config.APP_MODEL,
         "ensemble_cnn_weight": config.APP_ENSEMBLE_CNN_WEIGHT,
         "models": {name: quality_metrics(y, pred, meta["source"]) for name, pred in predictions.items()},
         "fruit": fruit_metrics(meta["product"], fruit_prediction),
     }
     f1 = lambda a, b: quality_metrics(a, b)["f1_macro"]  # noqa: E731
-    report["models"]["ensemble"]["f1_macro_ci95"] = group_bootstrap(
-        y, predictions["ensemble"], meta["group"], f1, n=1000)
+    # Intervalo para el modelo final (config.APP_MODEL), el que se reporta en test.
+    report["models"][config.APP_MODEL]["f1_macro_ci95"] = group_bootstrap(
+        y, predictions[config.APP_MODEL], meta["group"], f1, n=1000)
 
     config.RESULTS.mkdir(parents=True, exist_ok=True)
     name = "test" if is_test else "val"
@@ -204,8 +206,8 @@ def run(partition: str = "val", confirm: bool = False) -> dict:
     for model, item in report["models"].items():
         print(f"  {model:>20}: F1 macro {item['f1_macro']:.3f} | malas como buenas "
               f"{item['bad_to_good']}")
-    lo, hi = report["models"]["ensemble"]["f1_macro_ci95"]
-    print(f"  ensamble, IC 95 % por grupos: [{lo:.3f}; {hi:.3f}]")
+    lo, hi = report["models"][config.APP_MODEL]["f1_macro_ci95"]
+    print(f"  modelo final ({config.APP_MODEL}), IC 95 % por grupos: [{lo:.3f}; {hi:.3f}]")
     print(f"  fruta: accuracy {report['fruit']['accuracy']:.3f}")
     print(f"Resumen en {out}")
     return report

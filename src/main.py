@@ -2,7 +2,7 @@
 Punto de entrada del proyecto: cada paso es un comando.
 
 Uso (desde la raíz del repositorio, con el ambiente activado):
-    python -m src.main todo          # pasos 1 a 6 seguidos; se salta los que ya existen
+    python -m src.main todo          # pasos 1 a 6 seguidos; se salta los que ya están al día
 
     python -m src.main inventario    # 1. lista todas las fotos con su fruta, estado y grupo
     python -m src.main recortar      # 2. separa la fruta del fondo y guarda un recorte 128x128
@@ -66,29 +66,37 @@ def step_evaluate(test: bool = False, confirm: bool = False) -> None:
     evaluate_models.run("test" if test else "val", confirm)
 
 
-def all_models_exist() -> bool:
-    return all((config.MODELS_DIR / name).is_file() for name in config.MODEL_FILES.values())
+def up_to_date(outputs: list, inputs: list) -> bool:
+    """True si todas las salidas existen y son más nuevas que todas las entradas que existen."""
+    if not all(path.is_file() for path in outputs):
+        return False
+    oldest = min(path.stat().st_mtime for path in outputs)
+    return all(oldest >= path.stat().st_mtime for path in inputs if path.is_file())
 
 
-# (nombre, función, archivo que deja; si ya existe, "todo" se salta el paso)
+MANIFEST = config.CROPS_DIR / "manifest.csv"
+MODELS = [config.MODELS_DIR / name for name in config.MODEL_FILES.values()]
+
+# (nombre, función, ¿ya está hecho?). "todo" se salta un paso si su salida existe y es más
+# nueva que su entrada; así, al agregar fotos de celular etiquetadas, rehace desde "dividir".
 PIPELINE = (
     ("inventario", step_inventory, lambda: config.INDEX_CSV.is_file()),
-    ("recortar", step_crop, lambda: (config.CROPS_DIR / "manifest.csv").is_file()),
-    ("dividir", step_split, lambda: config.SPLITS_CSV.is_file()),
-    ("atributos", step_features, lambda: config.FEATURES_NPZ.is_file()),
-    ("entrenar", step_train, all_models_exist),
+    ("recortar", step_crop, lambda: MANIFEST.is_file()),
+    ("dividir", step_split, lambda: up_to_date([config.SPLITS_CSV], [MANIFEST, config.PHONE_TRAIN_CSV])),
+    ("atributos", step_features, lambda: up_to_date([config.FEATURES_NPZ], [config.SPLITS_CSV])),
+    ("entrenar", step_train, lambda: up_to_date(MODELS, [config.FEATURES_NPZ])),
     ("evaluar", step_evaluate, lambda: False),
 )
 
 
 def run_all() -> None:
     """
-    Corre los pasos en orden. Si la salida de un paso ya existe, lo salta (para rehacer un
-    paso, córrelo solo; para rehacer todo, borra data/processed/ y models/).
+    Corre los pasos en orden y se salta los que ya están al día (para rehacer un paso a la
+    fuerza, córrelo solo; para rehacer todo, borra data/processed/ y models/).
     """
     for number, (name, function, done) in enumerate(PIPELINE, start=1):
         if done():
-            print(f"[{number}/{len(PIPELINE)}] {name}: ya existe, se salta.")
+            print(f"[{number}/{len(PIPELINE)}] {name}: ya está al día, se salta.")
             continue
         print(f"[{number}/{len(PIPELINE)}] {name}…")
         function()

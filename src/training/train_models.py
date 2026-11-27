@@ -102,15 +102,28 @@ def quality_metrics(y_true, y_pred, sources=None) -> dict:
         "recall_bad": float((y_pred[bad] == "bad").mean()) if bad.any() else None,
         "bad_to_good": int((y_pred[bad] == "good").sum()),
     }
+    regular = y_true == "regular"
+    if regular.any():
+        result["recall_regular"] = float((y_pred[regular] == "regular").mean())
     if sources is not None:
         sources = np.asarray(sources)
-        # Kaggle solo tiene good y bad; AgriFreshNET tiene las tres.
+        # Kaggle solo tiene good y bad; AgriFreshNET y AFruitDB tienen las tres. Comparar
+        # AgriFreshNET con AFruitDB muestra si "regular" se aprendió o depende de la fuente.
         for source, name, labs in (("ryandpark", "f1_kaggle", ["good", "bad"]),
-                                   ("agrifreshnet", "f1_agrifreshnet", labels)):
+                                   ("agrifreshnet", "f1_agrifreshnet", labels),
+                                   ("afruitdb", "f1_afruitdb", labels)):
             mask = sources == source
             if mask.any():
                 result[name] = float(f1_score(y_true[mask], y_pred[mask], labels=labs,
                                               average="macro", zero_division=0))
+        # ¿Qué tanto acierta "regular" en cada fuente? Si solo acierta en AgriFreshNET, el
+        # modelo aprendió el estilo de esa fuente y no el estado de la fruta.
+        regular_by_source = {}
+        for source in sorted(set(sources.tolist())):
+            mask = (sources == source) & (y_true == "regular")
+            if mask.any():
+                regular_by_source[source] = float((y_pred[mask] == "regular").mean())
+        result["recall_regular_by_source"] = regular_by_source
     return result
 
 

@@ -163,3 +163,20 @@ def test_run_refuses_a_bad_split(tmp_path, exclusions, monkeypatch):
     monkeypatch.setattr(split, "MAX_DEVIATION", 0.0)
     with pytest.raises(RuntimeError, match="no cumple"):
         split.run(manifest, tmp_path / "splits.csv")
+
+
+def test_run_adds_labeled_phone_photos_to_train(tmp_path, exclusions):
+    # Como en el proyecto: crops/manifest.csv y, al lado, celular/celular_train.csv.
+    (tmp_path / "crops").mkdir()
+    (tmp_path / "celular").mkdir()
+    manifest = tmp_path / "crops" / "manifest.csv"
+    synthetic_manifest(manifest)
+    phone = tmp_path / "celular" / config.PHONE_TRAIN_CSV.name
+    phone.write_text("filename,product,quality,source,group,decision,crop,crop_mask,blind_id\n"
+                     "data/external/raw/Orange/a.jpg,orange,good,celular,celular:s1,candidate,"
+                     "../celular/images/E1.png,../celular/masks/E1.png,EXT-1\n", encoding="utf-8")
+    output = split.run(manifest, tmp_path / "splits.csv")
+    with output.open(encoding="utf-8") as file:
+        written = [row for row in csv.DictReader(file) if row["source"] == "celular"]
+    assert len(written) == 1 and written[0]["split"] == "train"
+    assert written[0]["group"] == "celular:s1" and written[0]["product"] == "orange"

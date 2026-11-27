@@ -1,0 +1,585 @@
+{
+  "cv": "StratifiedGroupKFold(3) por grupo, sobre train",
+  "scoring": "f1_macro",
+  "n_train": 18199,
+  "n_val": 3605,
+  "sklearn": "1.7.2",
+  "test_used": false,
+  "models": {
+    "logistic_regression": {
+      "target": "quality",
+      "file": "calidad_regresion_logistica.joblib",
+      "size_mb": 0.0,
+      "seconds": 16.5,
+      "best_params": {
+        "logisticregression__C": 0.1
+      },
+      "cv_f1_mean": 0.5857239723969335,
+      "cv_f1_std": 0.03755629702258113,
+      "train_f1_mean": 0.7734662861282527,
+      "grid": [
+        {
+          "params": {
+            "logisticregression__C": 0.1
+          },
+          "cv_f1_mean": 0.5857239723969335,
+          "cv_f1_std": 0.03755629702258113
+        },
+        {
+          "params": {
+            "logisticregression__C": 1
+          },
+          "cv_f1_mean": 0.5807881649207829,
+          "cv_f1_std": 0.03738998973862556
+        },
+        {
+          "params": {
+            "logisticregression__C": 10
+          },
+          "cv_f1_mean": 0.5803899895814287,
+          "cv_f1_std": 0.03705997417305576
+        }
+      ],
+      "validation": {
+        "n": 3605,
+        "f1_macro": 0.7055655050364713,
+        "accuracy": 0.7095700416088766,
+        "balanced_accuracy": 0.7052619189600499,
+        "labels": [
+          "good",
+          "regular",
+          "bad"
+        ],
+        "confusion_matrix": [
+          [
+            1069,
+            359,
+            124
+          ],
+          [
+            339,
+            553,
+            25
+          ],
+          [
+            124,
+            76,
+            936
+          ]
+        ],
+        "recall_bad": 0.823943661971831,
+        "bad_to_good": 124,
+        "recall_regular": 0.6030534351145038,
+        "f1_kaggle": 0.8723047077852126,
+        "f1_agrifreshnet": 0.6126397337455488,
+        "f1_afruitdb": 0.6829724410845355,
+        "recall_regular_by_source": {
+          "afruitdb": 0.6856060606060606,
+          "agrifreshnet": 0.5690184049079755,
+          "own": 1.0
+        }
+      }
+    },
+    "svm_linear": {
+      "target": "quality",
+      "file": "calidad_svm_lineal.joblib",
+      "size_mb": 0.0,
+      "seconds": 48.3,
+      "best_params": {
+        "linearsvc__C": 0.1
+      },
+      "cv_f1_mean": 0.5730218387573848,
+      "cv_f1_std": 0.022797398990722726,
+      "train_f1_mean": 0.7741587659754637,
+      "grid": [
+        {
+          "params": {
+            "linearsvc__C": 0.1
+          },
+          "cv_f1_mean": 0.5730218387573848,
+          "cv_f1_std": 0.022797398990722726
+        },
+        {
+          "params": {
+            "linearsvc__C": 1
+          },
+          "cv_f1_mean": 0.5726008011730915,
+          "cv_f1_std": 0.02212847104497367
+        },
+        {
+          "params": {
+            "linearsvc__C": 10
+          },
+          "cv_f1_mean": 0.572335927898639,
+          "cv_f1_std": 0.021928463748217553
+        }
+      ],
+      "validation": {
+        "n": 3605,
+        "f1_macro": 0.6991801242146055,
+        "accuracy": 0.7109570041608877,
+        "balanced_accuracy": 0.6967613338539672,
+        "labels": [
+          "good",
+          "regular",
+          "bad"
+        ],
+        "confusion_matrix": [
+          [
+            1120,
+            308,
+            124
+          ],
+          [
+            413,
+            468,
+            36
+          ],
+          [
+            122,
+            39,
+            975
+          ]
+        ],
+        "recall_bad": 0.858274647887324,
+        "bad_to_good": 122,
+        "recall_regular": 0.5103598691384951,
+        "f1_kaggle": 0.8858983998931858,
+        "f1_agrifreshnet": 0.6041154819153544,
+        "f1_afruitdb": 0.6810155377367687,
+        "recall_regular_by_source": {
+          "afruitdb": 0.6022727272727273,
+          "agrifreshnet": 0.4723926380368098,
+          "own": 1.0
+        }
+      }
+    },
+    "random_forest": {
+      "target": "quality",
+      "file": "calidad_random_forest.joblib",
+      "size_mb": 6.5,
+      "seconds": 218.7,
+      "best_params": {
+        "max_depth": null,
+        "max_features": 0.1,
+        "min_samples_leaf": 20
+      },
+      "cv_f1_mean": 0.6015843157958715,
+      "cv_f1_std": 0.02248909783187516,
+      "train_f1_mean": 0.9301450029634905,
+      "grid": [
+        {
+          "params": {
+            "max_depth": null,
+            "max_features": "sqrt",
+            "min_samples_leaf": 1
+          },
+          "cv_f1_mean": 0.5600844312617274,
+          "cv_f1_std": 0.029303710124606783
+        },
+        {
+          "params": {
+            "max_depth": null,
+            "max_features": "sqrt",
+            "min_samples_leaf": 5
+          },
+          "cv_f1_mean": 0.5861867961815729,
+          "cv_f1_std": 0.014019391193453898
+        },
+        {
+          "params": {
+            "max_depth": null,
+            "max_features": "sqrt",
+            "min_samples_leaf": 20
+          },
+          "cv_f1_mean": 0.6013643616197818,
+          "cv_f1_std": 0.03137713868775655
+        },
+        {
+          "params": {
+            "max_depth": null,
+            "max_features": 0.1,
+            "min_samples_leaf": 1
+          },
+          "cv_f1_mean": 0.5684322605303486,
+          "cv_f1_std": 0.020818943708019972
+        },
+        {
+          "params": {
+            "max_depth": null,
+            "max_features": 0.1,
+            "min_samples_leaf": 5
+          },
+          "cv_f1_mean": 0.5921464717019084,
+          "cv_f1_std": 0.01802735754281871
+        },
+        {
+          "params": {
+            "max_depth": null,
+            "max_features": 0.1,
+            "min_samples_leaf": 20
+          },
+          "cv_f1_mean": 0.6015843157958715,
+          "cv_f1_std": 0.02248909783187516
+        },
+        {
+          "params": {
+            "max_depth": 20,
+            "max_features": "sqrt",
+            "min_samples_leaf": 1
+          },
+          "cv_f1_mean": 0.5657814564629081,
+          "cv_f1_std": 0.02065360292449547
+        },
+        {
+          "params": {
+            "max_depth": 20,
+            "max_features": "sqrt",
+            "min_samples_leaf": 5
+          },
+          "cv_f1_mean": 0.5878742162136187,
+          "cv_f1_std": 0.014615002114940445
+        },
+        {
+          "params": {
+            "max_depth": 20,
+            "max_features": "sqrt",
+            "min_samples_leaf": 20
+          },
+          "cv_f1_mean": 0.6012848727976764,
+          "cv_f1_std": 0.03135564932822382
+        },
+        {
+          "params": {
+            "max_depth": 20,
+            "max_features": 0.1,
+            "min_samples_leaf": 1
+          },
+          "cv_f1_mean": 0.5737671134059626,
+          "cv_f1_std": 0.022597231219823825
+        },
+        {
+          "params": {
+            "max_depth": 20,
+            "max_features": 0.1,
+            "min_samples_leaf": 5
+          },
+          "cv_f1_mean": 0.5941118303806552,
+          "cv_f1_std": 0.01592615433309524
+        },
+        {
+          "params": {
+            "max_depth": 20,
+            "max_features": 0.1,
+            "min_samples_leaf": 20
+          },
+          "cv_f1_mean": 0.6012100543032144,
+          "cv_f1_std": 0.02236609163018093
+        }
+      ],
+      "validation": {
+        "n": 3605,
+        "f1_macro": 0.7624458016784228,
+        "accuracy": 0.7658807212205271,
+        "balanced_accuracy": 0.7654542288752584,
+        "labels": [
+          "good",
+          "regular",
+          "bad"
+        ],
+        "confusion_matrix": [
+          [
+            1094,
+            408,
+            50
+          ],
+          [
+            322,
+            590,
+            5
+          ],
+          [
+            41,
+            18,
+            1077
+          ]
+        ],
+        "recall_bad": 0.9480633802816901,
+        "bad_to_good": 41,
+        "recall_regular": 0.64340239912759,
+        "f1_kaggle": 0.9656419309884656,
+        "f1_agrifreshnet": 0.6608014076056392,
+        "f1_afruitdb": 0.655005036244098,
+        "recall_regular_by_source": {
+          "afruitdb": 0.7992424242424242,
+          "agrifreshnet": 0.5812883435582822,
+          "own": 0.0
+        }
+      }
+    },
+    "fruit_rf": {
+      "target": "product",
+      "file": "fruta_random_forest.joblib",
+      "size_mb": 27.7,
+      "seconds": 93.8,
+      "best_params": {
+        "max_features": 0.1,
+        "min_samples_leaf": 1
+      },
+      "cv_f1_mean": 0.6841882449402279,
+      "cv_f1_std": 0.011220492968928778,
+      "train_f1_mean": 1.0,
+      "grid": [
+        {
+          "params": {
+            "max_features": "sqrt",
+            "min_samples_leaf": 1
+          },
+          "cv_f1_mean": 0.669225451103853,
+          "cv_f1_std": 0.016538308520907142
+        },
+        {
+          "params": {
+            "max_features": "sqrt",
+            "min_samples_leaf": 5
+          },
+          "cv_f1_mean": 0.6643198671870317,
+          "cv_f1_std": 0.012753535890128025
+        },
+        {
+          "params": {
+            "max_features": 0.1,
+            "min_samples_leaf": 1
+          },
+          "cv_f1_mean": 0.6841882449402279,
+          "cv_f1_std": 0.011220492968928778
+        },
+        {
+          "params": {
+            "max_features": 0.1,
+            "min_samples_leaf": 5
+          },
+          "cv_f1_mean": 0.6821529421954579,
+          "cv_f1_std": 0.008583906496028585
+        }
+      ],
+      "validation": {
+        "n": 3605,
+        "accuracy": 0.8693481276005548,
+        "f1_macro": 0.7999588702042659,
+        "labels": [
+          "apple",
+          "banana",
+          "bitter_melon",
+          "cucumber",
+          "eggplant",
+          "guava",
+          "lime",
+          "mango",
+          "orange",
+          "papaya",
+          "pineapple",
+          "pomegranate",
+          "tomato"
+        ],
+        "confusion_matrix": [
+          [
+            205,
+            8,
+            0,
+            0,
+            1,
+            0,
+            3,
+            0,
+            9,
+            0,
+            0,
+            62,
+            1
+          ],
+          [
+            0,
+            680,
+            0,
+            0,
+            0,
+            3,
+            0,
+            1,
+            2,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            18,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            3,
+            0,
+            131,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            4,
+            1,
+            0,
+            0,
+            88,
+            0,
+            0,
+            0,
+            0,
+            1,
+            2,
+            0,
+            0
+          ],
+          [
+            21,
+            6,
+            0,
+            0,
+            7,
+            105,
+            0,
+            0,
+            8,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            28,
+            42,
+            0,
+            0,
+            0,
+            4,
+            204,
+            0,
+            1,
+            0,
+            0,
+            0,
+            2
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            10,
+            2,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            17,
+            1,
+            11,
+            2,
+            1,
+            9,
+            0,
+            700,
+            19,
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            18,
+            28,
+            0,
+            8,
+            1,
+            0,
+            7,
+            12,
+            252,
+            3,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            6,
+            0,
+            0
+          ],
+          [
+            22,
+            19,
+            0,
+            0,
+            0,
+            4,
+            0,
+            0,
+            0,
+            0,
+            0,
+            211,
+            5
+          ],
+          [
+            7,
+            16,
+            0,
+            0,
+            0,
+            0,
+            2,
+            0,
+            19,
+            0,
+            0,
+            12,
+            524
+          ]
+        ]
+      }
+    }
+  }
+}

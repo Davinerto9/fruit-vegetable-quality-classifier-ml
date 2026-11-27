@@ -30,7 +30,7 @@ donde:
 | $x_i$ | fotografía RGB de alto $H_i$ y ancho $W_i$ | $\{0,\dots,255\}^{H_i\times W_i\times 3}$ |
 | $y_i$ | calidad visible de la pieza | $\mathcal{Y}=\{\text{good},\text{regular},\text{bad}\}$, $K=3$ |
 | $s_i$ | fuente | $\{\text{ryandpark},\text{agrifreshnet},\text{own}\}$ |
-| $p_i$ | producto | 12 productos canónicos (`config.PRODUCTS`) |
+| $p_i$ | producto | 13 productos canónicos (`config.PRODUCTS`) |
 | $g_i$ | grupo de captura (ráfaga, original + aumentos, sesión propia) | identificador |
 
 $s_i$, $p_i$ y $g_i$ **no son entradas del modelo**. Se usan para particionar, auditar y medir sesgos.
@@ -82,7 +82,7 @@ El objetivo de generalización no es la distribución de los datasets sino la de
 | SVM lineal | Maximiza el margen; buena generalización en alta dimensión. | SVM RBF: costo $O(n^2)$ a $O(n^3)$ con $n=16.272$. |
 | Random Forest | Capta interacciones no lineales entre atributos (p. ej. tono × saturación) y reduce varianza promediando árboles. | Árbol único: varianza alta. XGBoost: posible mejora, más hiperparámetros. |
 | CNN de 4 bloques desde cero | Aprende filtros directamente de los píxeles; con 4 bloques el campo receptivo cubre una lesión completa (§6.4). | Transfer learning: mejor F1 esperado, pero la consigna lo recomienda menos. |
-| Ensamble RF + CNN con peso fijo | Errores poco correlacionados; el promedio reduce el riesgo (§6.6). | Elegir un solo modelo: empatan en F1, pero el ensamble comete menos errores caros. |
+| Random Forest como modelo final | Empata en F1 con la CNN y el ensamble, y es el que menos frutas malas deja pasar como buenas (§8.1). | Ensamble RF + CNN: F1 igual, pero el doble de errores `bad→good` en el reparto final. |
 | Split por ráfaga y CV agrupada | Estima el error sobre capturas nuevas (§7.1). | Split por imagen o por archivo: fuga entre fotos de una misma ráfaga, que se midió en el primer reparto. |
 | F1 macro como métrica de selección | Pesa igual las 3 clases (§7.2). | Accuracy: premia ignorar la clase minoritaria. |
 
@@ -411,37 +411,35 @@ Para dimensionar el conjunto externo de fotos propias, el semiancho del interval
 
 ---
 
-## 8. Resultados e interpretación matemática (val del segundo reparto)
+## 8. Resultados e interpretación matemática
 
-Todas las cifras son de val del segundo reparto (3.795 recortes, 852 grupos). Test no se ha usado.
+§8.1 y §8.3 usan val del **reparto final**: 3.605 recortes en 129 grupos. Este reparto ya incluye AFruitDB, mango y la mitad "entrenar" de las fotos de celular. Test no se ha usado. Los experimentos de arquitectura de §8.2 son del segundo reparto, que tenía solo Kaggle y AgriFreshNET; se citan como historia del diseño.
 
-### 8.1 Comparación con incertidumbre
+### 8.1 Comparación con incertidumbre y elección del modelo final
 
-| Modelo | F1 macro [IC 95% por grupos] | Recall `bad` | `bad→good` (tasa) | `regular→good` |
-| --- | --- | ---: | ---: | ---: |
-| Regresión logística | 0,714 | 0,789 | 165 (9,7%) | — |
-| SVM lineal ($C=10$) | 0,717 | 0,820 | 173 (10,2%) | — |
-| CNN de 3 bloques | 0,797 | 0,870 | 135 (8,0%) | 97 |
-| Random Forest (rejilla) | 0,857 [0,834 – 0,878] | 0,897 | 121 (7,1%) | 122 |
-| CNN de 4 bloques | 0,858 [0,831 – 0,881] | 0,916 | 90 (5,3%) | 128 |
-| **Ensamble 0,5/0,5** | **0,875** | **0,926** | **79 (4,7%)** | **115** |
+| Modelo | F1 macro [IC 95% por grupos] | Recall `bad` | `bad→good` | Recall `regular` | `regular→good` |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Regresión logística | 0,706 [0,654 – 0,762] | 0,824 | 124 | 0,603 | 339 |
+| SVM lineal | 0,699 [0,639 – 0,764] | 0,858 | 122 | 0,510 | 413 |
+| CNN de 4 bloques | 0,738 [0,677 – 0,801] | 0,878 | 120 | 0,436 | 448 |
+| Ensamble 0,5/0,5 | 0,769 [0,705 – 0,839] | 0,919 | 82 | 0,496 | 425 |
+| **Random Forest (modelo final)** | **0,762 [0,697 – 0,850]** | **0,948** | **41** | **0,643** | **322** |
 
-Diferencias pareadas (bootstrap por grupos, IC 95%):
+Diferencias pareadas (bootstrap por grupos, 1.000 réplicas, IC 95%):
 
-| Comparación | $\Delta$ F1 global | Kaggle | AgriFreshNET |
-| --- | --- | --- | --- |
-| 4 bloques − 3 bloques (capacidad) | +0,060 [+0,036; +0,084] | +0,030 | +0,094 |
-| con giros − sin giros (augmentation) | −0,051 [−0,073; −0,031] | −0,004 | −0,084 |
-| CNN − RF | +0,001 [−0,027; +0,028] | −0,016 | +0,023 |
-| Ensamble − RF | +0,018 [−0,004; +0,042] | −0,005 | +0,044 [+0,012; +0,077] |
-| Ensamble − CNN | +0,018 [+0,008; +0,028] | +0,011 | +0,020 |
+| Comparación | $\Delta$ F1 macro | $\Delta$ errores `bad→good` |
+| --- | --- | --- |
+| Ensamble − RF | +0,007 [−0,042; +0,045] | +41 [+8; +79] |
+| CNN − RF | −0,025 [−0,090; +0,027] | +79 [+25; +138] |
+| Ensamble − CNN | +0,032 [+0,015; +0,053] | −38 [−71; −14] |
 
 Lecturas:
 
-1. **Los no lineales superan a los lineales** por unos 0,14 de F1: la frontera lineal no alcanza.
-2. **RF y la CNN empatan en F1.** El intervalo de $\Delta$ incluye el 0. La CNN, en cambio, comete un 26% menos de errores `bad→good`, el más caro.
-3. **El ensamble mejora todos los indicadores de riesgo a la vez.** Frente a RF, la mejora global no es significativa, pero sí lo es en AgriFreshNET, la parte con tres clases. RF y CNN coinciden en el 84,3% de las fotos, con accuracy 0,951; en las 594 donde discrepan, el ensamble acierta el 58,4%, frente al 46,5% de RF y el 48,1% de la CNN. Esto concuerda con §6.6.
-4. **La decisión se justifica por costo, no por F1.** Si el error `bad→good` pesa más que los demás (§1.3), el ensamble minimiza el riesgo esperado entre los candidatos: 79 frente a 121 errores caros.
+1. **Los no lineales superan a los lineales**, aunque la brecha es menor que en el segundo reparto (≈ 0,06).
+2. **RF, la CNN y el ensamble empatan en F1**: los intervalos de $\Delta$ frente a RF incluyen el 0.
+3. **RF comete significativamente menos errores caros.** El ensamble deja pasar 41 frutas malas más como buenas, y la CNN 79 más. Ninguno de los dos intervalos incluye el 0. RF también encuentra más regulares: 0,64, frente a 0,50 del ensamble.
+4. **El ensamble sigue ayudando a la CNN**, como predice §6.6: corrige parte de sus errores. RF y la CNN coinciden en el 74,2% de las fotos. En las 930 donde discrepan, el ensamble acierta el 57,1%, RF el 47,4% y la CNN el 47,7%. Pero promediar con una CNN que tiende a decir `good` arrastra a RF hacia `good`.
+5. **Decisión (tomada en val, antes de abrir test):** `APP_MODEL = "random_forest"`. Con F1 empatado decide el costo asimétrico de §1.3, y ahí el mejor es RF. Además, la app ya no necesita TensorFlow para decidir.
 
 ### 8.2 Sesgo, varianza y sobreajuste
 
@@ -454,6 +452,11 @@ Lecturas:
 | CNN de 3 bloques + giros | pérdida 0,554 | pérdida 0,529 | Más regularización sobre un modelo que no sobreajustaba: empeora el ajuste y el F1. |
 | CNN de 4 bloques | acc 0,968, pérdida 0,095 | acc 0,878, pérdida 0,334 | Sobreajuste desde la época 30, contenido por EarlyStopping (mejor época 38 de 50). |
 
+**En el reparto final:**
+- RF tiene F1 0,930 en train, 0,602 en la CV agrupada y 0,762 en val. La brecha train–CV es grande: los árboles memorizan, y la elección de `min_samples_leaf=20` (las hojas más grandes de la rejilla) confirma que hace falta regularizar.
+- La CNN de 4 bloques termina con accuracy 0,903 y pérdida 0,255 en train, y 0,883 y 0,355 en su holdout de parada temprana. Su mejor época fue la 18 de 30.
+- Que val (0,76) supere a la CV (0,60) indica que los pliegues de la CV son más difíciles que val. Por ejemplo, un pliegue puede quedarse sin las sesiones de una fruta. La CV sirve para comparar configuraciones, no como estimación del error final.
+
 La secuencia 3 bloques → 3 bloques con giros → 4 bloques funciona como un experimento del dilema sesgo–varianza:
 
 - Con 3 bloques había sesgo (train y validation juntos y con pérdida alta).
@@ -464,23 +467,23 @@ Con 4 bloques, la regularización vuelve a ser una mejora razonable, pero probar
 
 ### 8.3 Descomposición por fuente: el confusor
 
-| Modelo | F1 macro Kaggle (solo good/bad) | F1 macro AgriFreshNET (3 clases) |
-| --- | ---: | ---: |
-| Regresión logística | 0,871 | 0,616 |
-| SVM lineal | 0,881 | 0,628 |
-| Random Forest | 0,954 | 0,799 |
-| CNN | 0,938 | 0,823 |
-| Ensamble | 0,949 | 0,843 |
+| Modelo | F1 macro Kaggle (solo good/bad) | F1 macro AgriFreshNET (3 clases) | F1 macro AFruitDB (3 clases) | Recall `regular` AgriFreshNET / AFruitDB |
+| --- | ---: | ---: | ---: | ---: |
+| Regresión logística | 0,872 | 0,613 | 0,683 | 0,57 / 0,69 |
+| SVM lineal | 0,886 | 0,604 | 0,681 | 0,47 / 0,60 |
+| Random Forest | 0,966 | 0,661 | 0,655 | 0,58 / 0,80 |
+| CNN | 0,950 | 0,661 | 0,641 | 0,46 / 0,38 |
+| Ensamble | 0,964 | 0,699 | 0,695 | 0,51 / 0,46 |
 
-Kaggle no tiene `regular`, así que ahí el problema es binario. **La cifra representativa del problema de tres clases es la de AgriFreshNET (0,84 para el ensamble).**
+Kaggle no tiene `regular`, así que ahí el problema es binario. **Las cifras representativas del problema de tres clases son las de AgriFreshNET y AFruitDB (≈ 0,66 para RF).** Con AFruitDB, `regular` ya no viene de una sola fuente, y RF reconoce el `regular` de AFruitDB (0,80) mejor que el de AgriFreshNET (0,58).
 
-Como $P(s=\text{agrifreshnet}\mid y=\text{regular})=1$, la información mutua $I(y;s)>0$, y la evidencia muestra que los atributos codifican la fuente:
+En el segundo reparto, sin AFruitDB, se cumplía $P(s=\text{agrifreshnet}\mid y=\text{regular})=1$, y la evidencia mostraba que los atributos codifican la fuente:
 
 - Un RF que predice la *fuente* con los mismos 359 atributos alcanza 0,976 de balanced accuracy.
 - Entrenado solo con una fuente y evaluado en la otra, el AUC de `good` frente a `bad` cae de 0,98 a 0,72 (AgriFreshNET → Kaggle) y de 0,99 a 0,75 (Kaggle → AgriFreshNET).
 - El modelo entrenado solo con AgriFreshNET predice `regular` en 305 de 1.553 fotos de Kaggle; el modelo combinado, en 1.
 
-La conclusión defendible es que hay un confusor y un cambio de dominio fuerte. Que la sonda acierte la fuente no prueba que el clasificador use la fuente como atajo, pero la señal aprendida no transfiere bien entre dominios. En val hay 4 fotos propias, y RF y la CNN fallan 3. El tamaño de muestra no permite estimar nada, pero el resultado es coherente con lo anterior y motiva el conjunto externo de §7.4.
+La conclusión defendible es que hay un confusor y un cambio de dominio fuerte. Que la sonda acierte la fuente no prueba que el clasificador use la fuente como atajo, pero la señal aprendida no transfiere bien entre dominios. En val del segundo reparto había 4 fotos propias, y RF y la CNN fallaban 3. El tamaño de muestra no permite estimar nada, pero el resultado es coherente con lo anterior y motiva el conjunto externo de §7.4.
 
 ### 8.4 Dónde fallan
 
@@ -508,7 +511,7 @@ La conclusión defendible es que hay un confusor y un cambio de dominio fuerte. 
 ## 10. Conclusiones técnicas
 
 1. **La unidad estadística es el grupo, no la foto.** La fuga del primer reparto infló el F1 de Kaggle en unos 3,5 puntos aunque los grupos estuvieran bien separados: lo que fallaba era la definición del grupo. Val del segundo reparto tiene 852 unidades independientes, y sus intervalos se calculan sobre ellas.
-2. **La formulación de costo asimétrico decide el modelo.** RF y la CNN empatan en F1. El ensamble no gana a RF de forma significativa en F1, pero reduce los errores `bad→good` de 121 a 79, y ese es el criterio que la formulación de §1.3 hace prioritario.
+2. **La formulación de costo asimétrico decide el modelo.** RF, la CNN y el ensamble empatan en F1. En el segundo reparto el ensamble cometía menos errores `bad→good`, pero en el reparto final RF comete la mitad (41 frente a 82, diferencia significativa). Ese es el criterio que §1.3 hace prioritario, así que el modelo final es RF.
 3. **El diagnóstico sesgo–varianza guió los experimentos** y explica por qué la augmentation empeoró y la capacidad mejoró (§8.2).
 4. **Fuente y clase están confundidas** para `regular`, y la transferencia entre dominios es débil. Las conclusiones sobre `regular` se limitan a AgriFreshNET, y el desempeño en fotos de celular no está medido.
 5. **El tamaño es geometría, no aprendizaje.** $d_n$ depende de $D/Z$; para obtener centímetros hace falta una referencia de escala (§4.4).

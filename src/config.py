@@ -17,7 +17,7 @@ Constantes:
   para que el código funcione en cualquier computador, sin rutas absolutas.
 - DATA_RAW, DATA_OWN, DATA_PROCESSED: datos externos, fotos propias del equipo
   y archivos derivados.
-- RYANDPARK_DIR, AGRIFRESHNET_DIR: carpeta de cada dataset externo.
+- RYANDPARK_DIR, AGRIFRESHNET_DIR, AFRUITDB_DIR: carpeta de cada dataset externo.
 - OWN_LABELS, INDEX_CSV, CROPS_DIR: etiquetas propias, índice de todas las
   imágenes y recortes generados por la segmentación.
 - SPLITS_CSV, FEATURES_NPZ: partición train/val/test y atributos de cada recorte.
@@ -58,6 +58,8 @@ DATA_PROCESSED = ROOT / "data" / "processed"
 RYANDPARK_DIR = DATA_RAW / "ryandpark"
 # AgriFreshNET (Mendeley Data, DOI 10.17632/42m5tb7yv9.1), aporta la clase intermedia.
 AGRIFRESHNET_DIR = DATA_RAW / "agrifreshnet" / "Processed Data"
+# AFruitDB (Mojumdar et al., 2025, CC BY 4.0): fotos de celular en mercados de Bangladesh.
+AFRUITDB_DIR = DATA_RAW / "afruitdb"
 
 # Etiquetas de las fotos propias (una fila por foto).
 OWN_LABELS = DATA_OWN / "labels.csv"
@@ -73,6 +75,11 @@ CROPS_DIR = DATA_PROCESSED / "crops"
 # Partición final train/val/test (src/data/split.py) y atributos de cada recorte.
 SPLITS_CSV = CROPS_DIR / "splits.csv"
 FEATURES_NPZ = DATA_PROCESSED / "features.npz"
+# Fotos de celular de la mitad "entrenar", ya etiquetadas (src/evaluation/phone_test.py).
+# Si existe, src/data/split.py las agrega a train. Van en su propia carpeta, junto a crops/,
+# para que rehacer "recortar" no choque con ellas.
+PHONE_TRAIN_DIR = DATA_PROCESSED / "celular"
+PHONE_TRAIN_CSV = PHONE_TRAIN_DIR / "celular_train.csv"
 
 # Modelos entrenados. Se guardan aquí al entrenar (python -m src.main entrenar) y se suben a
 # Git para que la app funcione sin reentrenar.
@@ -121,12 +128,31 @@ AGRIFRESHNET_QUALITY = {
     "rotten": "bad",
 }
 
+# AFruitDB: carpeta de calidad -> calidad, y carpeta de fruta -> producto. Burmese_grape queda
+# fuera. El mango solo tiene fotos de AFruitDB (y seis de data/own): no hay una fuente externa
+# para medirlo, así que su nota sale de val/test de AFruitDB.
+AFRUITDB_QUALITY = {
+    "1st grade": "good",
+    "2nd grade": "regular",
+    "3rd grade": "bad",
+}
+AFRUITDB_PRODUCTS = {
+    "Apple": "apple",
+    "Banana": "banana",
+    "Mango": "mango",
+    "Papayas": "papaya",
+    "Tomatoes": "tomato",
+}
+# Fotos de AFruitDB de la misma fruta separadas por más de esto son sesiones distintas.
+AFRUITDB_SESSION_GAP_MINUTES = 10
+
 # Nombre del producto en las carpetas (en minúscula) -> nombre canónico.
 PRODUCT_NAMES = {
     "apple": "apple",
     "banana": "banana",
     "guava": "guava",
     "lime": "lime",
+    "mango": "mango",
     "lemon": "lime",  # en "Mixed" de ryandpark aparece como Lemon
     "orange": "orange",
     "pomegranate": "pomegranate",
@@ -185,7 +211,9 @@ SIZE_THRESHOLDS = {
 APP_MIN_PRODUCT_CONFIDENCE = 0.5
 # Modelo que decide la clase en la app: "ensemble" (voto suave RF + CNN), "random_forest" o "cnn".
 # La elección final la fija el equipo antes de abrir test; si falta un modelo, la app usa el otro.
-APP_MODEL = "ensemble"
+# Elegido en val (2026-11-26): Random Forest. Empata en F1 con el ensamble (0,762 frente a 0,769,
+# diferencia dentro del IC) pero deja pasar la mitad de malas como buenas (41 frente a 82).
+APP_MODEL = "random_forest"
 # Peso de la CNN en el voto suave p = (1 - w) * p_RF + w * p_CNN. Fijado en 0,5 antes de ver
 # resultados; no se ajusta con validation.
 APP_ENSEMBLE_CNN_WEIGHT = 0.5

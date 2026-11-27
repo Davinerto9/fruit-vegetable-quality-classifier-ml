@@ -1,6 +1,6 @@
 """
-Construye data/processed/index.csv a partir de las tres fuentes locales (ryandpark, AgriFreshNET
-y fotos propias), con etiqueta, grupo para las particiones y estado de cada imagen.
+Construye data/processed/index.csv a partir de las fuentes locales (ryandpark, AgriFreshNET,
+AFruitDB y fotos propias), con etiqueta, grupo para las particiones y estado de cada imagen.
 
 Fase CRISP-DM: Comprensión de datos (inventario) y Preparación de datos (etiquetas y grupos)
 Uso: python -m src.main inventario      (o python -m src.data.inventory)
@@ -8,12 +8,15 @@ Uso: python -m src.main inventario      (o python -m src.data.inventory)
 El grupo (`group`) es la unidad que no se separa al dividir en train/val/test:
 - ryandpark: fotos de la misma ráfaga (mismo minuto, o números consecutivos si no hay fecha);
 - AgriFreshNET: la foto original con sus copias aumentadas y variantes del teléfono (~2);
+- AFruitDB: la sesión de fotos de la misma fruta (pausas de menos de 10 minutos entre fotos),
+  con todas sus calidades juntas: son ráfagas de la misma pieza cada ~5 segundos;
 - propias: la sesión o la pieza anotada en labels.csv;
 - en todas, las copias con contenido idéntico se unen en un solo grupo.
 """
 import csv
 import re
 from collections import defaultdict
+from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass
 from hashlib import file_digest
@@ -174,6 +177,50 @@ def agrifreshnet_records() -> list[ImageRecord]:
     return records
 
 
+AFRUITDB_STAMP = re.compile(r"(\d{8})_(\d{6})")
+
+
+def afruitdb_records() -> list[ImageRecord]:
+    """
+    Registros de AFruitDB: <Fruta>/<1st|2nd|3rd grade>/IMG_AAAAMMDD_HHMMSS.jpg.
+
+    Grupo: se ordenan todas las fotos de una fruta por la hora del nombre y una pausa de más de
+    config.AFRUITDB_SESSION_GAP_MINUTES abre una sesión nueva. Las calidades de una misma
+    sesión van juntas (pueden ser piezas del mismo puesto y la misma luz). Una foto sin hora
+    en el nombre queda en su propio grupo.
+
+    Retorna:
+        Un registro por imagen, solo de las frutas de config.AFRUITDB_PRODUCTS.
+    """
+    if not config.AFRUITDB_DIR.is_dir():
+        return []
+    timed, records = [], []
+    for folder, product in sorted(config.AFRUITDB_PRODUCTS.items()):
+        for grade, quality in sorted(config.AFRUITDB_QUALITY.items()):
+            directory = config.AFRUITDB_DIR / folder / grade
+            if not directory.is_dir():
+                continue
+            for path in images(directory):
+                record = ImageRecord(path.relative_to(config.ROOT).as_posix(), product, quality,
+                                     "afruitdb", "", "", "", "labeled")
+                match = AFRUITDB_STAMP.search(path.stem)
+                if match:
+                    stamp = datetime.strptime("".join(match.groups()), "%Y%m%d%H%M%S")
+                    timed.append((product, stamp, record))
+                else:
+                    record.group = f"afruitdb:{product}:{path.stem.lower()}"
+                records.append(record)
+    timed.sort(key=lambda item: (item[0], item[1], item[2].filename))
+    previous, session = None, 0
+    for product, stamp, record in timed:
+        if (previous is None or previous[0] != product
+                or (stamp - previous[1]).total_seconds() > 60 * config.AFRUITDB_SESSION_GAP_MINUTES):
+            session = stamp.strftime("%Y%m%d_%H%M")
+        record.group = f"afruitdb:{product}:{session}"
+        previous = (product, stamp)
+    return records
+
+
 def content_digest(path: Path) -> bytes:
     """
     Huella SHA-256 del contenido de un archivo.
@@ -236,12 +283,12 @@ def merge_external_duplicates(records: list[ImageRecord]) -> None:
 
 def build_inventory() -> list[ImageRecord]:
     """
-    Reúne las tres fuentes, une los duplicados externos y comprueba que no haya rutas repetidas.
+    Reúne las fuentes, une los duplicados externos y comprueba que no haya rutas repetidas.
 
     Retorna:
         Registros ordenados por fuente y ruta.
     """
-    external = kaggle_records() + agrifreshnet_records()
+    external = kaggle_records() + agrifreshnet_records() + afruitdb_records()
     merge_external_duplicates(external)
     records = own_records() + external
     if len({record.filename for record in records}) != len(records):

@@ -55,7 +55,7 @@ QUALITY_LABELS_ES = {"good": "Buena", "regular": "Regular", "bad": "Mala"}
 PRODUCT_LABELS_ES = {
     "apple": "Manzana", "banana": "Banano", "guava": "Guayaba", "lime": "Limón",
     "orange": "Naranja", "pomegranate": "Granada", "bitter_melon": "Melón amargo",
-    "cucumber": "Pepino", "eggplant": "Berenjena", "papaya": "Papaya", "pineapple": "Piña",
+    "cucumber": "Pepino", "eggplant": "Berenjena", "mango": "Mango", "papaya": "Papaya", "pineapple": "Piña",
     "tomato": "Tomate",
 }
 SIZE_LABELS_ES = {"small": "Pequeño", "medium": "Mediano", "large": "Grande"}
