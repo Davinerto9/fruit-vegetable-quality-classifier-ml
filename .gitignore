@@ -13,6 +13,7 @@ data/processed/index.csv
 data/processed/crops/
 data/processed/pilot-crops/
 data/processed/features.npz
+data/processed/celular/
 data/processed/.prepare-*/
 
 # models/ y results/ SÍ se suben: la app necesita los modelos y el informe cita los
