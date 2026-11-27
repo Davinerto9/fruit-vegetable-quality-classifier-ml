@@ -490,6 +490,30 @@ La conclusión defendible es que hay un confusor y un cambio de dominio fuerte. 
 - **`regular→good`** es el error más frecuente en los tres candidatos (115 a 128 de 709). El deterioro inicial desplaza poco el histograma de color global, y la CNN, aun con 46 px de campo receptivo, promedia la mancha con piel sana en el GAP.
 - **Los productos exclusivos de AgriFreshNET** (pepino, papaya, berenjena, tomate, piña) concentran los errores. Son también los que más empeoraron con la augmentation geométrica, lo que sugiere que la orientación o la iluminación de esa captura son constantes y el modelo las usa.
 
+### 8.5 Prueba final: test y fotos de celular (evaluadas una sola vez)
+
+| Modelo | F1 test [IC 95%] | Kaggle | AgriFreshNET | AFruitDB | `bad→good` |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Regresión logística | 0,560 | 0,865 | 0,433 | 0,373 | 86 |
+| SVM lineal | 0,566 | 0,880 | 0,460 | 0,348 | 80 |
+| CNN | 0,603 | 0,903 | 0,499 | 0,472 | 190 |
+| Ensamble | 0,621 | 0,929 | 0,513 | 0,539 | 101 |
+| **Random Forest (final)** | **0,596 [0,522 – 0,677]** | **0,932** | **0,431** | **0,613** | **40** |
+
+Test tiene 4.169 recortes en 184 grupos. La fruta se acierta en el 79,5 % (val: 86,9 %).
+
+**Lecturas:**
+
+1. **El criterio de costo se sostiene fuera de muestra.** RF vuelve a ser el que menos `bad→good` comete (40, frente a 101 y 190). El ensamble le gana en F1 por 0,025, del mismo orden que la diferencia no significativa de val.
+2. **La brecha val → test (0,76 → 0,60) es de `regular` en AgriFreshNET.** RF llama `bad` a 570 de los 786 `regular` de esa fuente en test. La razón es el tamaño efectivo: casi todos los productos tienen solo de 2 a 5 lotes de `regular` (la excepción es la berenjena, con 21), y cada lote va entero a una partición. Val recibió lotes de naranja, papaya, tomate y berenjena, donde RF llama `bad` a menos del 5 % de los `regular`. Test recibió lotes de banano, pepino, piña y berenjena, con 87–93 %. Con tan pocas unidades independientes, $\hat F_1$ de val tiene una varianza que el bootstrap por grupos solo capta en parte: los intervalos [0,697; 0,850] y [0,522; 0,677] casi no se solapan.
+3. **La frontera `regular`/`bad` depende del lote.** Para algunos productos, el `regular` de un lote se parece al `bad` de otro. Es una consecuencia del confusor de §8.3: lo que "regular" significa en AgriFreshNET varía entre lotes, y el modelo no puede aprenderlo con 2 a 5 ejemplos independientes.
+
+**Fotos de celular** (302 fotos de 6 sesiones, etiquetadas a ciegas):
+
+- **Fruta: accuracy 0,318 [0,053; 0,764].** El intervalo es enorme porque hay solo 6 sesiones. Por fruta: banano 1,00 y manzana 0,89 (con fotos de celular en train); naranja 0,94; guayaba 0,01, limón 0,00 y mango 0,00 (sin fotos de celular en train). Limones y guayabas amarillo-verdosos se predicen como naranja (probabilidad 0,3–0,5), y el mango como papaya. Los recortes y máscaras se revisaron visualmente y son correctos: no hay un error de segmentación, sino un cambio de dominio entre los datasets y la fruta local.
+- **Estado: F1 macro 0,295 [0,227; 0,334].** Hay 250 buenas, 48 regulares y 4 malas. RF tiende a acertar las buenas, pero no detecta `regular`, y con 4 malas el recall de `bad` (0 de 4) no es estimable.
+- **Conclusión:** entrenar con fotos de celular de una fruta es lo que más ayuda. Es la evidencia más directa a favor de ampliar la mitad "entrenar" a todas las frutas.
+
 ---
 
 ## 9. Alternativas consideradas y descartadas
@@ -513,11 +537,12 @@ La conclusión defendible es que hay un confusor y un cambio de dominio fuerte. 
 1. **La unidad estadística es el grupo, no la foto.** La fuga del primer reparto infló el F1 de Kaggle en unos 3,5 puntos aunque los grupos estuvieran bien separados: lo que fallaba era la definición del grupo. Val del segundo reparto tiene 852 unidades independientes, y sus intervalos se calculan sobre ellas.
 2. **La formulación de costo asimétrico decide el modelo.** RF, la CNN y el ensamble empatan en F1. En el segundo reparto el ensamble cometía menos errores `bad→good`, pero en el reparto final RF comete la mitad (41 frente a 82, diferencia significativa). Ese es el criterio que §1.3 hace prioritario, así que el modelo final es RF.
 3. **El diagnóstico sesgo–varianza guió los experimentos** y explica por qué la augmentation empeoró y la capacidad mejoró (§8.2).
-4. **Fuente y clase están confundidas** para `regular`, y la transferencia entre dominios es débil. Las conclusiones sobre `regular` se limitan a AgriFreshNET, y el desempeño en fotos de celular no está medido.
+4. **Fuente y clase están confundidas** para `regular`, y la transferencia entre dominios es débil. En test, F1 0,596 [0,522; 0,677], la caída frente a val viene de `regular` en lotes de AgriFreshNET que no se parecen a los de train (§8.5). Con fotos de celular, el modelo reconoce las frutas que vio en celular al entrenar y falla en las demás.
 5. **El tamaño es geometría, no aprendizaje.** $d_n$ depende de $D/Z$; para obtener centímetros hace falta una referencia de escala (§4.4).
 6. **Mejoras justificadas por la teoría:**
    - Comprobar si AgriFreshNET también tiene ráfagas por fecha y hora, con la misma prueba de CV de §7.1.
-   - Conjunto externo de fotos propias con al menos 40 piezas por clase (§7.4).
+   - Fotos de celular de **todas** las frutas en la mitad de entrenamiento, con al menos 40 piezas por clase (§7.4, §8.5).
+   - Más lotes independientes de `regular` por producto: con 2 a 5, la cifra de val no es estable (§8.5).
    - Calibrar las probabilidades antes de combinarlas (§6.6).
    - Regularizar la CNN eligiendo con validación cruzada, no con validación.
 
