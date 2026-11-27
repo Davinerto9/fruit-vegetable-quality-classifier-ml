@@ -31,3 +31,8 @@ kaggle.json
 
 # Conjunto externo (fotos del pool de la clase): fuera de Git
 data/external/
+
+# LaTeX del informe
+report/*.aux
+report/*.log
+report/*.out
