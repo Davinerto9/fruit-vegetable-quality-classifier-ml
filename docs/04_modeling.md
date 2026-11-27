@@ -35,7 +35,7 @@ El estado que muestra la app es el **promedio 50/50 de las probabilidades del Ra
 | --- | --- |
 | 1 | RF 0,842 y CNN 0,799, **inflados**: fotos casi idénticas de Kaggle quedaban a la vez en train y val. |
 | 2 | RF 0,857, CNN de 4 bloques 0,858 y promedio 0,875. La CNN pasó de 3 a 4 bloques porque con 3 no alcanzaba (subajuste); aumentar datos con giros empeoró. Seguía la fuga de AgriFreshNET. |
-| **Final** | Pendiente de reentrenar (`python -m src.main entrenar`). |
+| **Final** | Regresión logística 0,706, SVM lineal 0,699, RF 0,762, CNN 0,738 y promedio 0,769. La CV agrupada eligió C = 0,1 en la logística y la SVM; en el RF, hojas de 20, sin límite de profundidad y 10 % de los atributos por corte. La CNN paró en la época 18 de 30. |
 
 Las cifras de los intentos 1 y 2 solo explican el camino; las de la sustentación son las del reparto final.
 

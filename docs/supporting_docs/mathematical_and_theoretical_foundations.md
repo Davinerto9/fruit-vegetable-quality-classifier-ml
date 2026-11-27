@@ -1,6 +1,6 @@
 # Fundamentos matemáticos y teóricos
 
-Este documento sostiene el indicador **PI3** (solución de problemas con matemáticas). Cada ecuación corresponde a código del repositorio; la columna *Implementación* de cada tabla indica dónde verificarla. Las cifras de §8 son de val del segundo intento de reparto ([preparación](../03_data_preparation.md#cómo-llegamos-al-reparto-final)) y explican por qué se eligió esta configuración; se reemplazan por las del reparto final al reentrenar (`python -m src.main entrenar`). Test sigue reservado.
+Este documento sostiene el indicador **PI3** (solución de problemas con matemáticas). Cada ecuación corresponde a código del repositorio; la columna *Implementación* de cada tabla indica dónde verificarla. Las cifras de §8.1, §8.3 y §8.5 son del reparto final (val, y test y celular evaluados una sola vez); las de §8.2 que se marcan como del segundo reparto ([preparación](../03_data_preparation.md#cómo-llegamos-al-reparto-final)) explican cómo se llegó a esta configuración.
 
 | Evidencia exigida por la consigna | Sección |
 | --- | --- |
@@ -29,7 +29,7 @@ donde:
 | --- | --- | --- |
 | $x_i$ | fotografía RGB de alto $H_i$ y ancho $W_i$ | $\{0,\dots,255\}^{H_i\times W_i\times 3}$ |
 | $y_i$ | calidad visible de la pieza | $\mathcal{Y}=\{\text{good},\text{regular},\text{bad}\}$, $K=3$ |
-| $s_i$ | fuente | $\{\text{ryandpark},\text{agrifreshnet},\text{own}\}$ |
+| $s_i$ | fuente | $\{\text{ryandpark},\text{agrifreshnet},\text{afruitdb},\text{own},\text{celular}\}$ |
 | $p_i$ | producto | 13 productos canónicos (`config.PRODUCTS`) |
 | $g_i$ | grupo de captura (ráfaga, original + aumentos, sesión propia) | identificador |
 
@@ -65,10 +65,10 @@ El objetivo de generalización no es la distribución de los datasets sino la de
 
 1. **Entrada no estructurada y de alta dimensión:** una foto de 1200×1600 px tiene $5{,}8\times10^6$ valores; la señal útil (una mancha) ocupa una fracción pequeña.
 2. **Etiquetas heterogéneas:** Kaggle solo trae `good/bad`; AgriFreshNET trae `Fresh/Semi-Fresh/Rotten`. El mapeo a $\mathcal{Y}$ es una decisión de modelado, no un dato.
-3. **Confusor fuente–clase:** en validation, $P(s=\text{agrifreshnet}\mid y=\text{regular})=1$. Un modelo puede minimizar la pérdida aprendiendo $s$ en lugar de $y$ (§8.3).
+3. **Confusor fuente–clase:** en el inventario, $P(s=\text{agrifreshnet}\mid y=\text{regular})\approx0{,}82$ (era 1 antes de agregar AFruitDB). Un modelo puede minimizar la pérdida aprendiendo $s$ en lugar de $y$ (§8.3).
 4. **Dependencia entre observaciones:** ráfagas y aumentos rompen el supuesto i.i.d.; val del segundo reparto tiene 3.795 recortes pero solo 852 grupos independientes. Definir mal el grupo produjo una fuga real (§7.1).
 5. **Variable física no identificable:** el tamaño real no se puede recuperar de una foto sin escala (§4.2).
-6. **Desbalance:** en train, `regular` es el 18,7% de los recortes.
+6. **Desbalance:** en el conjunto con que se ajusta la CNN, `regular` es el 22,2% de los recortes (§6.5).
 
 ---
 
@@ -245,7 +245,7 @@ P(y=k\mid z)=\frac{e^{w_k^\top z+b_k}}{\sum_{j=1}^{K}e^{w_j^\top z+b_j}},\qquad
 \min_{W,b}\ \frac{1}{2}\lVert W\rVert_F^2-C\sum_{i}\omega_{y_i}\log P(y_i\mid z_i),
 $$
 
-con $C=1$, pesos de clase $\omega_k$ (§6.5) y solver L-BFGS. El problema es convexo: tiene un único óptimo global.
+con $C=0{,}1$ (elegido por la CV agrupada entre $\{0{,}1;\,1;\,10\}$), pesos de clase $\omega_k$ (§6.5) y solver L-BFGS. El problema es convexo: tiene un único óptimo global.
 
 ### 6.2 SVM lineal (`LinearSVC`)
 
@@ -256,7 +256,7 @@ $$
 \qquad \hat y=\arg\max_k\,(w_k^\top z+b_k).
 $$
 
-El margen geométrico es $2/\lVert w_k\rVert$: minimizar la norma lo ensancha, y $C$ regula cuánto se tolera violarlo. $C\in\{0{,}1;\,1;\,10\}$ se eligió por CV agrupada por ráfaga en el segundo reparto: $C=10$, F1 = 0,676 ± 0,010. Que gane el $C$ más grande (menos regularización) es una señal de que el modelo está limitado por su frontera lineal y no por sobreajuste (§8.2).
+El margen geométrico es $2/\lVert w_k\rVert$: minimizar la norma lo ensancha, y $C$ regula cuánto se tolera violarlo. $C\in\{0{,}1;\,1;\,10\}$ se eligió por CV agrupada: en el reparto final, $C=0{,}1$, F1 = 0,573 ± 0,023 (en el segundo reparto había ganado $C=10$). Que ahora gane la regularización más fuerte indica que, con grupos más gruesos y más fuentes, la frontera lineal se ajusta a particularidades de los grupos de entrenamiento que no se repiten en otros pliegues (§8.2).
 
 ### 6.3 Random Forest
 
@@ -275,7 +275,7 @@ $$
 
 El bootstrap y el submuestreo de atributos bajan $\rho$; promediar $T$ árboles elimina el segundo término. Por eso árboles profundos (sesgo bajo, varianza alta) funcionan bien en conjunto.
 
-**Configuración elegida** (`src/models/model_definitions.py`). `GridSearchCV` prueba `min_samples_leaf` ∈ {1, 5, 20} × `max_depth` ∈ {sin límite, 20} × $m$ ∈ {$\lfloor\sqrt{359}\rfloor=18$, $\lfloor0{,}1\cdot359\rfloor=35$}, con $T=200$, y se queda con la de mayor F1 macro promedio en la CV por grupos (§7.2). En el segundo reparto, una búsqueda equivalente eligió `min_samples_leaf=5`, `max_depth=20` y $m=35$.
+**Configuración elegida** (`src/models/model_definitions.py`). `GridSearchCV` prueba `min_samples_leaf` ∈ {1, 5, 20} × `max_depth` ∈ {sin límite, 20} × $m$ ∈ {$\lfloor\sqrt{359}\rfloor=18$, $\lfloor0{,}1\cdot359\rfloor=35$}, con $T=200$, y se queda con la de mayor F1 macro promedio en la CV por grupos (§7.2). En el reparto final eligió `min_samples_leaf=20`, sin límite de profundidad y $m=35$ (F1 de CV 0,602 ± 0,022); en el segundo reparto, una búsqueda equivalente había elegido `min_samples_leaf=5`, `max_depth=20` y $m=35$.
 
 - Con $m=35$, la CV supera a $m=18$ en las 15 combinaciones de hoja y profundidad: cada corte ve más atributos útiles, a costa de árboles algo más correlacionados.
 - Usar 400 árboles no cambia la CV (0,8186 frente a 0,8185): con $T=160$ el término $(1-\rho)\sigma^2/T$ ya es despreciable.
@@ -320,13 +320,13 @@ L(\theta)=-\frac1N\sum_{i=1}^{N}\omega_{y_i}\log p_\theta(y_i\mid x_i),\qquad
 \omega_k=\frac{N}{K\,N_k}.
 $$
 
-Con los conteos de train del segundo reparto ($N=16.272$):
+Con los conteos del conjunto con que se ajusta la CNN en el reparto final ($N=16.873$, *train* sin el holdout de parada temprana; `results/entrenamiento_cnn.json`):
 
 | Clase | $N_k$ | $\omega_k$ |
 | --- | ---: | ---: |
-| good | 6.845 | 0,792 |
-| regular | 3.049 | 1,779 |
-| bad | 6.378 | 0,850 |
+| good | 6.808 | 0,826 |
+| regular | 3.744 | 1,502 |
+| bad | 6.321 | 0,890 |
 
 Con estos pesos, cada clase aporta lo mismo a la pérdida total ($\omega_kN_k=N/K$). Los pesos se calculan solo con train.
 
@@ -386,7 +386,7 @@ $$
 \lambda^\*=\arg\max_{\lambda\in\Lambda}\ \frac{1}{F}\sum_{f=1}^{F}\text{F1}_\text{macro}\big(h_{\lambda}^{(-f)},\ \text{fold}_f\big),
 $$
 
-implementado con `GridSearchCV(scoring="f1_macro", cv=StratifiedGroupKFold(3))`, que además reentrena el mejor modelo con todo *train*. Lo mismo se hace para el Random Forest de fruta, con el producto como etiqueta. Para la CNN no hay CV, porque cada entrenamiento tarda de 30 a 55 minutos en GPU: su arquitectura viene de los experimentos de §8.2 y su parada temprana usa un holdout de *train*. Así, validación y prueba no eligen nada y se miden una sola vez. En el segundo reparto, la CNN se había elegido con val, y por eso sus cifras de §8 son algo optimistas.
+implementado con `GridSearchCV(scoring="f1_macro", cv=StratifiedGroupKFold(3))`, que además reentrena el mejor modelo con todo *train*. Lo mismo se hace para el Random Forest de fruta, con el producto como etiqueta. Para la CNN no hay CV, porque cada entrenamiento tarda de 30 a 60 minutos (el final, 62 minutos en CPU): su arquitectura viene de los experimentos de §8.2 y su parada temprana usa un holdout de *train*. Así, validación y prueba no eligen nada y se miden una sola vez. En el segundo reparto, la CNN se había elegido con val, y por eso sus cifras de §8 son algo optimistas.
 
 ### 7.3 Métricas
 
@@ -452,7 +452,8 @@ Lecturas:
 | CNN de 3 bloques + giros | pérdida 0,554 | pérdida 0,529 | Más regularización sobre un modelo que no sobreajustaba: empeora el ajuste y el F1. |
 | CNN de 4 bloques | acc 0,968, pérdida 0,095 | acc 0,878, pérdida 0,334 | Sobreajuste desde la época 30, contenido por EarlyStopping (mejor época 38 de 50). |
 
-**En el reparto final:**
+La tabla anterior es del segundo reparto. **En el reparto final:**
+- Regresión logística: F1 0,773 en train, 0,586 en la CV agrupada y 0,706 en val; SVM lineal: 0,774, 0,573 y 0,699. Las dos eligen $C=0{,}1$.
 - RF tiene F1 0,930 en train, 0,602 en la CV agrupada y 0,762 en val. La brecha train–CV es grande: los árboles memorizan, y la elección de `min_samples_leaf=20` (las hojas más grandes de la rejilla) confirma que hace falta regularizar.
 - La CNN de 4 bloques termina con accuracy 0,903 y pérdida 0,255 en train, y 0,883 y 0,355 en su holdout de parada temprana. Su mejor época fue la 18 de 30.
 - Que val (0,76) supere a la CV (0,60) indica que los pliegues de la CV son más difíciles que val. Por ejemplo, un pliegue puede quedarse sin las sesiones de una fruta. La CV sirve para comparar configuraciones, no como estimación del error final.

@@ -2,7 +2,7 @@
 
 Proyecto final del curso **Algoritmos y Programación III**, Universidad Icesi, Cali, Colombia (2026-2).
 
-**Estado del proyecto:** código listo; falta entrenar con todos los datos y evaluar (ver [Cómo usar](#cómo-usar)).
+**Estado del proyecto:** terminado. Modelo final (Random Forest) en test: F1 macro del estado 0,596 [IC 95 %: 0,522 – 0,677] y 79,5 % de acierto en la fruta ([Evaluación](docs/05_evaluation.md)). Informe IEEE en [`report/informe.pdf`](report/informe.pdf) · [video del proyecto](https://youtu.be/gwlolsmqH44).
 
 [Plan simple: qué hace el sistema y por qué es honesto](docs/plan_simple.md) · [Metodología CRISP-DM](docs/crisp-dm.md) · [Criterios de calidad](docs/criterios-calidad.md)
 

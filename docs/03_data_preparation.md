@@ -11,13 +11,13 @@ Convertir las fuentes heterogéneas en observaciones individuales, etiquetadas y
 
 ## Selección y limpieza
 
-1. Excluir las escenas Mixed sin etiquetas por pieza, los cuatro mangos que siguen con segmentación dudosa y los 17 grupos conflictivos.
+1. Excluir las escenas Mixed sin etiquetas por pieza, los cuatro mangos que siguen con segmentación dudosa y los 18 grupos conflictivos (247 archivos).
 2. Revisar el número de piezas por imagen. Cada fila de entrenamiento debe representar una pieza, no un racimo ni una escena con varios productos.
 3. Conservar fuente, producto, grupo, decisión y motivo de revisión para auditoría. No usar metadatos de procedencia como atributos predictivos.
 4. Detectar imágenes ilegibles, en escala de grises, desenfocadas o con contraste insuficiente; documentar el motivo de cada exclusión.
 5. Revisar visualmente los recortes candidatos. El estado automático ok no demuestra que la máscara sea correcta.
 
-El manifiesto completo local actualizado tiene 33.728 filas: **23.706 candidate, 7.477 review y 2.545 excluded**. El estado candidate incluye controles automáticos y revisión visual estratificada; no significa que cada uno de los 23.706 recortes haya recibido inspección visual individual.
+El manifiesto completo tiene 34.943 filas (las fotos labeled): **26.015 candidate, 7.524 review y 1.404 excluded**. El estado candidate incluye controles automáticos y revisión visual estratificada; no significa que cada uno de los 23.706 recortes haya recibido inspección visual individual.
 
 ## Segmentación y construcción de ejemplos
 
@@ -58,7 +58,7 @@ La semana es el agrupamiento más grueso (frente a día o minuto) que todavía d
 
 ## Artefactos y estado
 
-- `data/processed/index.csv`: inventario con 33.728 filas (`python -m src.main inventario`).
+- `data/processed/index.csv`: inventario con 36.265 filas (`python -m src.main inventario`).
 - `data/processed/crops/manifest.csv`: decisión y motivo para cada foto (`python -m src.main recortar`).
 - `data/processed/crops/splits.csv`: el reparto final (`python -m src.main dividir`).
 - `data/processed/features.npz`: los 359 atributos de cada recorte (`python -m src.main atributos`).
